@@ -1,0 +1,41 @@
+# zerolan-vtuber 配置示例（复制为 config.yaml 后填写；真实 config.yaml 不入 git）
+# key 优先级：config.yaml > 环境变量（.env）
+
+llm:
+  # 任意 OpenAI 兼容端点：openai/<model> + base_url 覆盖（含豆包 Ark）
+  base_url: null
+  api_key: null                # 或环境变量 / .env
+  model: deepseek/deepseek-chat
+  fallback_models: []          # litellm.Router 降级列表
+  temperature: 0.8
+
+asr:
+  vendor: baidu                # baidu | volcano
+  base_url: null
+  api_key: null
+  model: null
+
+tts:
+  vendor: baidu                # baidu | mimo
+  base_url: null
+  api_key: null
+  model: null
+  voice: null
+
+tools:
+  web_search:
+    provider: tavily           # tavily | ddgs
+  sixty_api:
+    base_url: https://60s.viki.moe
+
+server:
+  ws_host: 127.0.0.1
+  ws_port: 8090
+  http_port: 8091
+
+broadcast:
+  enabled: false
+  cron: null                   # "HH:MM"
+
+history:
+  db_path: data/history.db
