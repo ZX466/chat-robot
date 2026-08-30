@@ -1,0 +1,25 @@
+# .开头目录：.orca 除外（workflow.txt / agent-registry.md / talking.txt）
+.*/
+!.orca/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 机密
+.env
+config.yaml
+*.key
+*.pem
+
+# 构建产物
+dist/
+build/
+node_modules/
