@@ -3,8 +3,8 @@ import json
 import pytest
 import respx
 
-from providers.asr.baidu import BaiduASRError, BaiduASRProvider
-from providers.config import BaiduASRConfig
+from app.providers.asr.baidu import BaiduASRError, BaiduASRProvider
+from app.providers.config import BaiduASRConfig
 
 AUDIO = b"RIFF\x24\x00\x00\x00WAVEfmt fake-pcm-audio"
 TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token"

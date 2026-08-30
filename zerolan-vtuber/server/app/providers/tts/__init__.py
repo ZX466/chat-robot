@@ -18,7 +18,9 @@ __all__ = [
 ]
 
 
-def create_tts_provider(config: TTSSlotConfig, *, client: httpx.AsyncClient | None = None):
+def create_tts_provider(
+    config: TTSSlotConfig, *, client: httpx.AsyncClient | None = None
+) -> BaiduTTSProvider | MimoTTSProvider:
     if isinstance(config, BaiduTTSConfig):
         return BaiduTTSProvider(config, client=client)
     if isinstance(config, MimoTTSConfig):

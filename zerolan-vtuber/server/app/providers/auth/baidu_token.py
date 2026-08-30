@@ -43,9 +43,11 @@ class BaiduTokenManager:
 
     async def get_token(self) -> str:
         async with self._lock:
-            if self._token is not None and time.monotonic() < self._expires_at - self._refresh_margin:
+            expires_at = self._expires_at - self._refresh_margin
+            if self._token is not None and time.monotonic() < expires_at:
                 return self._token
             await self._refresh()
+            assert self._token is not None
             return self._token
 
     def invalidate(self) -> None:

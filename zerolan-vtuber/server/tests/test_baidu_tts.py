@@ -3,8 +3,8 @@ from urllib.parse import parse_qs
 import pytest
 import respx
 
-from providers.config import BaiduTTSConfig
-from providers.tts.baidu import BaiduTTSError, BaiduTTSProvider
+from app.providers.config import BaiduTTSConfig
+from app.providers.tts.baidu import BaiduTTSError, BaiduTTSProvider
 
 TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token"
 

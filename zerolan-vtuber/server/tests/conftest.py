@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from providers import http as http_pool
+from app.providers import http as http_pool
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

@@ -56,8 +56,10 @@ class BaiduASRProvider:
         response.raise_for_status()
         data = response.json()
         if data.get("err_no"):
+            err_no = data["err_no"]
             raise BaiduASRError(
-                f"Baidu ASR failed: err_no={data['err_no']} err_msg={data.get('err_msg')} sn={data.get('sn')}"
+                f"Baidu ASR failed: err_no={err_no} "
+                f"err_msg={data.get('err_msg')} sn={data.get('sn')}"
             )
         result = data.get("result") or []
         if not result:

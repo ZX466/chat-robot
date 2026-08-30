@@ -3,8 +3,8 @@ import json
 import pytest
 import respx
 
-from providers.config import MimoTTSConfig
-from providers.tts.mimo import MimoTTSError, MimoTTSProvider
+from app.providers.config import MimoTTSConfig
+from app.providers.tts.mimo import MimoTTSError, MimoTTSProvider
 
 API_URL = "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
 

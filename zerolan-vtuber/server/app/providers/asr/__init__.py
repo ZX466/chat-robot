@@ -3,14 +3,11 @@
 §7 update_provider_config 热替换时按新配置重建实例。
 """
 
-from typing import TYPE_CHECKING
+import httpx
 
 from ..config import ASRSlotConfig, BaiduASRConfig, VolcanoASRConfig
 from .baidu import BaiduASRError, BaiduASRProvider
 from .volcano import VolcanoASRError, VolcanoASRProvider
-
-if TYPE_CHECKING:
-    import httpx
 
 __all__ = [
     "BaiduASRError",
@@ -21,7 +18,9 @@ __all__ = [
 ]
 
 
-def create_asr_provider(config: ASRSlotConfig, *, client: "httpx.AsyncClient | None" = None):
+def create_asr_provider(
+    config: ASRSlotConfig, *, client: httpx.AsyncClient | None = None
+) -> BaiduASRProvider | VolcanoASRProvider:
     if isinstance(config, BaiduASRConfig):
         return BaiduASRProvider(config, client=client)
     if isinstance(config, VolcanoASRConfig):

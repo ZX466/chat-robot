@@ -2,7 +2,7 @@ import httpx
 import pytest
 import respx
 
-from providers.auth.baidu_token import TOKEN_URL, BaiduTokenError, BaiduTokenManager
+from app.providers.auth.baidu_token import TOKEN_URL, BaiduTokenError, BaiduTokenManager
 
 
 @respx.mock

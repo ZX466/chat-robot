@@ -4,8 +4,8 @@ import httpx
 import pytest
 import respx
 
-from providers.asr.volcano import VolcanoASRError, VolcanoASRProvider
-from providers.config import VolcanoASRConfig
+from app.providers.asr.volcano import VolcanoASRError, VolcanoASRProvider
+from app.providers.config import VolcanoASRConfig
 
 AUDIO = b"fake-raw-pcm-audio"
 SUBMIT_URL = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/submit"
