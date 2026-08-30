@@ -1,0 +1,9 @@
+{
+  "result": {
+    "text": "",
+    "utterances": [
+      { "text": "今天天气", "start_time": 0, "end_time": 800 },
+      { "text": "怎么样", "start_time": 800, "end_time": 1500 }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "error_detail": {
+    "tts_logid": 1234567890
+  },
+  "err_detail": "TTS request failed",
+  "err_msg": "request failed",
+  "err_no": 282000,
+  "err_subcode": 0,
+  "convert_offline": false,
+  "tts_logid": 1234567890
+}

@@ -1,0 +1,6 @@
+{
+  "access_token": "24.abc123.def456",
+  "expires_in": 2592000,
+  "refresh_token": "25.xyz789",
+  "scope": "audio_voice_assistant_get audio_tts_get"
+}
