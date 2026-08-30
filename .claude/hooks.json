@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-hooks.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const fs=require('fs');const p=JSON.parse(require('fs').readFileSync(0,'utf8')).tool_input?.file_path;if(!p)process.exit(0);if(!/\\.(ts|tsx|js|jsx|json)$/i.test(p))process.exit(0);try{const f=fs.readFileSync(process.cwd()+'/'+p,'utf8');const lines=f.split('\\n').filter(l=>l.trim().startsWith('console.log'));if(lines.length)console.error('\\u26a0\\ufe0f [ecc] console.log in '+p+' ('+lines.length+' line(s)) — remove before commit')}catch(e){}\""
+          }
+        ],
+        "description": "Warn when console.log appears in edited TS/JS files"
+      }
+    ]
+  }
+}
