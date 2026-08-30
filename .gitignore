@@ -1,6 +1,5 @@
-# .开头目录：.orca 除外（workflow.txt / agent-registry.md / talking.txt）
+# .开头目录全部排除（含 .orca，纯本地产物不入库）
 .*/
-!.orca/
 
 # Python
 __pycache__/
