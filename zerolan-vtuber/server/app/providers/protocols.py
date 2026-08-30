@@ -5,7 +5,14 @@ from typing import Protocol
 
 
 class ASRProvider(Protocol):
-    async def transcribe(self, audio: bytes, fmt: str) -> str: ...
+    async def transcribe(
+        self,
+        audio: bytes,
+        fmt: str,
+        *,
+        sample_rate: int = 16000,
+        channels: int = 1,
+    ) -> str: ...
 
 
 class TTSProvider(Protocol):

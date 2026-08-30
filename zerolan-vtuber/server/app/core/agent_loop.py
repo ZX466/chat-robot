@@ -78,9 +78,7 @@ class AgentLoop:
                 }
             )
 
-            results = await asyncio.gather(
-                *[self._invoke(tc) for tc in response.tool_calls]
-            )
+            results = await asyncio.gather(*[self._invoke(tc) for tc in response.tool_calls])
             history.extend(results)
 
         # 3 轮后仍无纯文本回复：取最后一轮内容

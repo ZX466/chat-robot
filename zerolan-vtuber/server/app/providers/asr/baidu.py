@@ -38,15 +38,22 @@ class BaiduASRProvider:
         )
         self._cuid = str(uuid.uuid4())
 
-    async def transcribe(self, audio: bytes, fmt: str, *, sample_rate: int | None = None) -> str:
-        """识别整段单声道音频，返回转写文本。"""
+    async def transcribe(
+        self,
+        audio: bytes,
+        fmt: str,
+        *,
+        sample_rate: int = 16000,
+        channels: int = 1,
+    ) -> str:
+        """识别整段单声道音频，返回转写文本（百度标准版仅单声道）。"""
         if not audio:
             raise ValueError("audio bytes must not be empty")
         token = await self._tokens.get_token()
         payload = {
             "format": fmt,
-            "rate": sample_rate or self._config.sample_rate,
-            "channel": 1,
+            "rate": sample_rate,
+            "channel": channels,
             "cuid": self._cuid,
             "speech": base64.b64encode(audio).decode("ascii"),
             "len": len(audio),

@@ -116,9 +116,7 @@ class VolcanoASRProvider:
                 transcript = result.get("text") or ""
                 if not transcript:
                     utterances = result.get("utterances") or []
-                    transcript = " ".join(
-                        str(u.get("text", "")) for u in utterances
-                    ).strip()
+                    transcript = " ".join(str(u.get("text", "")) for u in utterances).strip()
                 logger.info("BigASR transcript: {}", transcript)
                 return transcript
             if status == _STATUS_SILENT:

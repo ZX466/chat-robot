@@ -79,9 +79,7 @@ async def _web_search_handler(query: str, max_results: int = 5) -> str:
     results = await SearchProvider().search(query, max_results)
     if not results:
         return "No results."
-    lines = [
-        f"- {r.title}\n  URL: {r.url}\n  {r.snippet[:200]}" for r in results
-    ]
+    lines = [f"- {r.title}\n  URL: {r.url}\n  {r.snippet[:200]}" for r in results]
     return "\n".join(lines)
 
 

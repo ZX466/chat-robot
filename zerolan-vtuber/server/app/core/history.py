@@ -38,8 +38,7 @@ class History:
     async def recent(self, session_id: str, limit: int = 20) -> list[dict[str, str]]:
         assert self._conn is not None
         cursor = await self._conn.execute(
-            "SELECT role, content FROM messages WHERE session_id = ?"
-            " ORDER BY id DESC LIMIT ?",
+            "SELECT role, content FROM messages WHERE session_id = ? ORDER BY id DESC LIMIT ?",
             (session_id, limit),
         )
         rows = await cursor.fetchall()
@@ -50,9 +49,7 @@ class History:
         if session_id is None:
             await self._conn.execute("DELETE FROM messages")
         else:
-            await self._conn.execute(
-                "DELETE FROM messages WHERE session_id = ?", (session_id,)
-            )
+            await self._conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
         await self._conn.commit()
 
     async def close(self) -> None:
