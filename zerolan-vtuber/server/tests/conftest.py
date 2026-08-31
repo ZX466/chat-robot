@@ -1,6 +1,11 @@
 import json
+import os
 from collections.abc import Callable
 from pathlib import Path
+
+# 必须在 import litellm 前设置，否则收集阶段会联网拉模型价目表（无网时挂起）
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+os.environ.setdefault("LITELLM_LOG", "ERROR")
 
 import pytest
 

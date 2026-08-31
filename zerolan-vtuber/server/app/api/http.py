@@ -23,6 +23,7 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
         metadata: str = Form(...),  # noqa: B008 — FastAPI 注入约定
     ) -> dict[str, object]:
         """客户端麦克风开关关闭时上传 16kHz WAV → ASR → 文本链路。"""
+        orch: Orchestrator = app.state.orchestrator
         try:
             meta = json.loads(metadata)
             sample_rate = int(meta.get("SampleRate", meta.get("sample_rate", 16000)))
@@ -38,14 +39,14 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
 
         fmt = (audio.filename or "wav").rsplit(".", 1)[-1].lower()
         try:
-            text = await orchestrator.transcribe_audio(wave, fmt, sample_rate, channels)
+            text = await orch.transcribe_audio(wave, fmt, sample_rate, channels)
         except Exception as exc:  # noqa: BLE001 — ASR 失败回错误码
             raise HTTPException(
                 status_code=500, detail={"code": 500, "message": f"ASR failed: {exc}"}
             ) from exc
         # 语音识别文本走编排链路（字幕/音频经 orchestrator output_callback 广播到 WS）
         try:
-            async for _evt in orchestrator.process_text("voice", text):
+            async for _evt in orch.process_text("voice", text):
                 pass
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(
