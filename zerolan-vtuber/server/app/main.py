@@ -24,6 +24,7 @@ from app.providers.config import (
 )
 from app.providers.llm import LLMProvider
 from app.tools.registry import ToolRegistry
+from app.tools.sixty_api import register_sixty_api
 from app.tools.web_search import register_web_search
 
 SYSTEM_PROMPT = (
@@ -68,6 +69,7 @@ def build_orchestrator() -> Orchestrator:
 
     registry = ToolRegistry()
     register_web_search(registry)
+    register_sixty_api(registry)
 
     agent_loop = AgentLoop(llm, registry)
     return Orchestrator(

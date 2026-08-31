@@ -7,11 +7,10 @@ httpx + 内存 TTL 缓存（热榜类 600s，资讯类 1800s，天气 600s）。
 """
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
-from loguru import logger
 from pydantic import BaseModel, Field
 
 from app.config import settings
@@ -95,7 +94,7 @@ class SixtyApiClient:
         cache_key = "daily_news"
         cached = self._cache.get(cache_key)
         if cached is not None:
-            return cached
+            return str(cached)
 
         url = f"{self._base_url}/v2/60s?encoding=markdown"
         resp = await self._client.get(url)
@@ -143,7 +142,7 @@ class SixtyApiClient:
         """一言。"""
         data = await self._request("/v2/hitokoto", "hitokoto", self.TTL_HOT_LIST)
         if isinstance(data, dict):
-            return data.get("hitokoto", str(data))
+            return str(data.get("hitokoto", str(data)))
         return str(data)
 
     async def get_moyu(self) -> str:
