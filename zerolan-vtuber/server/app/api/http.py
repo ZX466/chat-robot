@@ -1,7 +1,8 @@
-"""HTTP 端点：/playground/microphone 语音上传、/audio/{id}、/health（§7）。
+"""HTTP 端点：/playground/microphone 语音上传、/resource/file、/health（§7）。
 
 multipart："audio"=WAV 文件、"metadata"=JSON{Channels,SampleRate}；
-响应沿用客户端 HttpResponseBody{code,message} 风格。
+响应沿用客户端 HttpResponseBody{code,message} 风格（D4：code 0=Success/1=Failed，
+HTTP status 与 body.code 解耦，http status 保留 200/4xx/5xx）。
 """
 
 import json
@@ -30,19 +31,19 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
             channels = int(meta.get("Channels", meta.get("channels", 1)))
         except (ValueError, TypeError) as exc:
             raise HTTPException(
-                status_code=400, detail={"code": 400, "message": "Invalid metadata"}
+                status_code=400, detail={"code": 1, "message": "Invalid metadata"}
             ) from exc
 
         wave = await audio.read()
         if not wave:
-            raise HTTPException(status_code=400, detail={"code": 400, "message": "Empty audio"})
+            raise HTTPException(status_code=400, detail={"code": 1, "message": "Empty audio"})
 
         fmt = (audio.filename or "wav").rsplit(".", 1)[-1].lower()
         try:
             text = await orch.transcribe_audio(wave, fmt, sample_rate, channels)
         except Exception as exc:  # noqa: BLE001 — ASR 失败回错误码
             raise HTTPException(
-                status_code=500, detail={"code": 500, "message": f"ASR failed: {exc}"}
+                status_code=500, detail={"code": 1, "message": f"ASR failed: {exc}"}
             ) from exc
         # 语音识别文本走编排链路（字幕/音频经 orchestrator output_callback 广播到 WS）
         try:
@@ -50,13 +51,16 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
                 pass
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(
-                status_code=500, detail={"code": 500, "message": f"Processing failed: {exc}"}
+                status_code=500, detail={"code": 1, "message": f"Processing failed: {exc}"}
             ) from exc
-        return {"code": 200, "message": "ok", "data": {"transcript": text}}
+        return {"code": 0, "message": "ok", "data": {"transcript": text}}
 
-    @app.get("/audio/{audio_id}")
-    async def get_audio(audio_id: str) -> FileResponse:
-        path = audio_dir / f"{audio_id}.wav"
+    @app.get("/resource/file")
+    async def resource_file(file_id: str) -> FileResponse:
+        """客户端下载凭据：file_id 即 play_speech 的 file_id（D1 对齐 GetAudioClipAsync）。"""
+        if not file_id.isalnum():
+            raise HTTPException(status_code=400, detail={"code": 1, "message": "Invalid file_id"})
+        path = audio_dir / f"{file_id}.wav"
         if not path.exists():
-            raise HTTPException(status_code=404, detail={"code": 404, "message": "Not found"})
+            raise HTTPException(status_code=404, detail={"code": 1, "message": "Not found"})
         return FileResponse(path, media_type="audio/wav")

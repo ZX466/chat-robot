@@ -57,18 +57,14 @@ def test_aggregator_orders_names() -> None:
 
 def test_rebuild_updates_config() -> None:
     provider = make_provider()
-    provider.rebuild(
-        base_url="https://new.test/v1", api_key="new-key", model="openai/gpt-5"
-    )
+    provider.rebuild(base_url="https://new.test/v1", api_key="new-key", model="openai/gpt-5")
     assert provider._config.model == "openai/gpt-5"
     assert provider._config.api_key == "new-key"
     assert provider._config.base_url == "https://new.test/v1"
 
 
 def test_router_built_with_fallbacks() -> None:
-    provider = make_provider(
-        model="deepseek/deepseek-chat", fallback_models=["openai/gpt-4o-mini"]
-    )
+    provider = make_provider(model="deepseek/deepseek-chat", fallback_models=["openai/gpt-4o-mini"])
     assert provider._router is not None
 
     provider2 = make_provider(model="deepseek/deepseek-chat", fallback_models=[])

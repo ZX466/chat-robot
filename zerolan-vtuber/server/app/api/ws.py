@@ -18,12 +18,28 @@ from app.protocol.models import ZerolanProtocol
 
 
 def mask_key(key: str | None) -> str:
-    """掩码 API key 供客户端回显：保留前 4 字符 + 尾部 3 字符，如 deepseek/k***。"""
+    """掩码 API key 供客户端回显：保留前 6 字符 + 尾部 3 字符，如 sk-abc…xyz。"""
     if not key:
         return "未配置"
     if len(key) <= 7:
         return key[0] + "***"
     return f"{key[:6]}{'*' * (len(key) - 9)}{key[-3:]}"
+
+
+_LLM_MODEL_VENDOR = "llm"
+
+
+def _wav_meta(wave: bytes) -> tuple[int, int, float] | None:
+    """解析标准 WAV 头 → (channels, sample_rate, duration_s)；非 WAV 返回 None。"""
+    if len(wave) < 44 or wave[:4] != b"RIFF" or wave[8:12] != b"WAVE":
+        return None
+    channels = int.from_bytes(wave[22:24], "little")
+    sample_rate = int.from_bytes(wave[24:28], "little")
+    byte_rate = int.from_bytes(wave[28:32], "little")
+    if channels == 0 or sample_rate == 0 or byte_rate == 0:
+        return None
+    data_size = len(wave) - 44  # 无扩展块的标准 WAV 近似
+    return channels, sample_rate, data_size / byte_rate
 
 
 class WSHub:
@@ -40,6 +56,8 @@ class WSHub:
         evt_type = evt.get("type")
         if evt_type == "user_text":
             text = str(evt.get("text", ""))
+            # D5：只发 show_user_text_input，不再广播 add_history(role=user)
+            # （客户端左右气泡会重复刷新）
             await self._broadcast(
                 {
                     "message": "User text",
@@ -48,27 +66,32 @@ class WSHub:
                     "data": {"text": text},
                 }
             )
-            await self._broadcast(
-                {
-                    "message": "History",
-                    "action": "add_history",
-                    "code": 0,
-                    "data": {"role": "user", "content": text},
-                }
-            )
         elif evt_type == "speech":
             wave = evt.get("bytes")
             if not isinstance(wave, bytes):
                 return
             audio_id = uuid.uuid4().hex
             (self._audio_dir / f"{audio_id}.wav").write_bytes(wave)
+            meta = _wav_meta(wave)
+            channels, sample_rate = (meta[0], meta[1]) if meta else (1, 16000)
+            duration = float(meta[2]) if meta else 0.0
             http_url = f"http://{self._settings.server.ws_host}:{self._settings.server.http_port}"
             await self._broadcast(
                 {
                     "message": "Speech",
                     "action": "play_speech",
                     "code": 0,
-                    "data": {"url": f"{http_url}/audio/{audio_id}"},
+                    "data": {
+                        "bot_id": "zerolan-vtuber",
+                        "bot_display_name": "Zerolan",
+                        "file_id": audio_id,
+                        "transcript": evt.get("text", ""),
+                        "audio_type": "wav",
+                        "duration": duration,
+                        "channels": channels,
+                        "sample_rate": sample_rate,
+                        "url": f"{http_url}/resource/file?file_id={audio_id}",
+                    },
                 }
             )
 
@@ -80,11 +103,30 @@ class WSHub:
         try:
             while True:
                 raw = await ws.receive_text()
+                sid = self._maybe_resume_session(raw)
+                if sid is not None and sid != session_id:
+                    # G1：client_hello 携带 session_id → 复用历史，重连后不丢
+                    self._connections.pop(session_id, None)
+                    session_id = sid
+                    self._connections[session_id] = ws
+                    logger.info("ws session resumed: {}", session_id)
                 await self._dispatch(ws, session_id, raw)
         except WebSocketDisconnect:
             logger.info("ws disconnected: session={}", session_id)
         finally:
             self._connections.pop(session_id, None)
+
+    @staticmethod
+    def _maybe_resume_session(raw: str) -> str | None:
+        """G1：解析首条消息；client_hello 携 session_id 时返回之，否则 None。"""
+        try:
+            msg = ZerolanProtocol.model_validate_json(raw)
+        except Exception:  # noqa: BLE001 — 非法消息由 _dispatch 报错
+            return None
+        if msg.action != "client_hello" or not isinstance(msg.data, dict):
+            return None
+        sid = msg.data.get("session_id")
+        return sid if isinstance(sid, str) and sid else None
 
     async def _dispatch(self, ws: WebSocket, session_id: str, raw: str) -> None:
         try:
@@ -132,7 +174,8 @@ class WSHub:
         await ws.send_text(ZerolanProtocol(**payload).model_dump_json())
 
     async def _on_ping(self, ws: WebSocket, session_id: str, msg: ZerolanProtocol) -> None:
-        await self._send(ws, {"message": "pong", "action": "ping", "code": 0, "data": None})
+        # D2：spec §5 客户端发 ping 期望收到同字面量 pong
+        await self._send(ws, {"message": "pong", "action": "pong", "code": 0, "data": None})
 
     async def _on_user_text(self, ws: WebSocket, session_id: str, text: str) -> None:
         """用户文本 → orchestrator（字幕/音频经 output_callback 广播）。"""
@@ -162,13 +205,27 @@ class WSHub:
     async def _on_client_hello(self, ws: WebSocket, session_id: str, msg: ZerolanProtocol) -> None:
         s = self._settings
         asr_key = getattr(s.asr, "api_key", None) or None
-        data = {
+        tts_key = getattr(s.tts, "api_key", None) or None
+        llm_key = getattr(s.llm, "api_key", None) or None
+        # G1：client_hello 可选携带 session_id，复用则重连后 history 不丢
+        data: dict[str, Any] = {
+            "ws_port": s.server.ws_port,
+            "res_port": s.server.http_port,
             "ws_url": f"ws://{s.server.ws_host}:{s.server.ws_port}/ws",
             "http_url": f"http://{s.server.ws_host}:{s.server.http_port}",
-            "llm_provider": f"{s.llm.model}",
-            "asr_provider": f"{mask_key(asr_key) if asr_key else s.asr.vendor}",
-            "tts_provider": f"{s.tts.vendor}",
+            "providers": {
+                "llm": {
+                    "provider": s.llm.model.split("/")[0] if s.llm.model else "llm",
+                    "masked": mask_key(llm_key),
+                },
+                "asr": {"provider": s.asr.vendor, "masked": mask_key(asr_key)},
+                "tts": {"provider": s.tts.vendor, "masked": mask_key(tts_key)},
+            },
         }
+        if isinstance(msg.data, dict):
+            client_sid = msg.data.get("session_id")
+            if isinstance(client_sid, str) and client_sid:
+                data["session_id"] = client_sid
         await self._send(
             ws,
             {"message": "Server hello!", "action": "server_hello", "code": 200, "data": data},
@@ -245,9 +302,7 @@ def _build_asr_config(data: Any) -> Any:
 
     vendor = data.get("vendor")
     common: dict[str, object] = {
-        k: v
-        for k, v in data.items()
-        if k in ("base_url", "api_key", "model") and v is not None
+        k: v for k, v in data.items() if k in ("base_url", "api_key", "model") and v is not None
     }
     if vendor == "volcano":
         return VolcanoASRConfig.model_validate(common)
