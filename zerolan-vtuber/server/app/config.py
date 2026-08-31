@@ -61,6 +61,7 @@ class ServerConfig(BaseModel):
 class BroadcastConfig(BaseModel):
     enabled: bool = False
     cron: str | None = None  # "HH:MM"
+    text: str = "大家好，欢迎回来！"  # 定时播报文案（§9-9）
 
 
 class HistoryConfig(BaseModel):
