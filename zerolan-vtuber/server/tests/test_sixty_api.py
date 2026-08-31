@@ -31,7 +31,9 @@ async def test_get_daily_news(api_client: SixtyApiClient) -> None:
 @respx.mock
 async def test_get_hot_list_bili(api_client: SixtyApiClient) -> None:
     respx.get("https://60s.viki.moe/v2/bili").mock(
-        return_value=httpx.Response(200, json={"code": 200, "message": "ok", "data": ["item1", "item2"]})
+        return_value=httpx.Response(
+            200, json={"code": 200, "message": "ok", "data": ["item1", "item2"]}
+        )
     )
     result = await api_client.get_hot_list("bili")
     assert "1. item1" in result
@@ -42,7 +44,9 @@ async def test_get_hot_list_bili(api_client: SixtyApiClient) -> None:
 @respx.mock
 async def test_get_hot_list_rednote(api_client: SixtyApiClient) -> None:
     respx.get("https://60s.viki.moe/v2/rednote").mock(
-        return_value=httpx.Response(200, json={"code": 200, "message": "ok", "data": ["笔记1", "笔记2"]})
+        return_value=httpx.Response(
+            200, json={"code": 200, "message": "ok", "data": ["笔记1", "笔记2"]}
+        )
     )
     result = await api_client.get_hot_list("rednote")
     assert "1. 笔记1" in result
@@ -60,7 +64,9 @@ async def test_get_hot_list_invalid_platform(api_client: SixtyApiClient) -> None
 @respx.mock
 async def test_get_weather(api_client: SixtyApiClient) -> None:
     respx.get("https://60s.viki.moe/v2/weather").mock(
-        return_value=httpx.Response(200, json={"code": 200, "message": "ok", "data": {"city": "北京", "temp": "25°C"}})
+        return_value=httpx.Response(
+            200, json={"code": 200, "message": "ok", "data": {"city": "北京", "temp": "25°C"}}
+        )
     )
     result = await api_client.get_weather("北京")
     assert "city: 北京" in result
@@ -71,7 +77,9 @@ async def test_get_weather(api_client: SixtyApiClient) -> None:
 @respx.mock
 async def test_get_epic_free(api_client: SixtyApiClient) -> None:
     respx.get("https://60s.viki.moe/v2/epic").mock(
-        return_value=httpx.Response(200, json={"code": 200, "message": "ok", "data": ["Game A", "Game B"]})
+        return_value=httpx.Response(
+            200, json={"code": 200, "message": "ok", "data": ["Game A", "Game B"]}
+        )
     )
     result = await api_client.get_epic_free()
     assert "- Game A" in result
@@ -82,7 +90,9 @@ async def test_get_epic_free(api_client: SixtyApiClient) -> None:
 @respx.mock
 async def test_get_exchange_rate(api_client: SixtyApiClient) -> None:
     respx.get("https://60s.viki.moe/v2/exchange-rate").mock(
-        return_value=httpx.Response(200, json={"code": 200, "message": "ok", "data": {"USD": 7.2, "EUR": 7.8}})
+        return_value=httpx.Response(
+            200, json={"code": 200, "message": "ok", "data": {"USD": 7.2, "EUR": 7.8}}
+        )
     )
     result = await api_client.get_exchange_rate()
     assert "USD: 7.2" in result
@@ -92,7 +102,9 @@ async def test_get_exchange_rate(api_client: SixtyApiClient) -> None:
 @respx.mock
 async def test_get_hitokoto(api_client: SixtyApiClient) -> None:
     respx.get("https://60s.viki.moe/v2/hitokoto").mock(
-        return_value=httpx.Response(200, json={"code": 200, "message": "ok", "data": {"hitokoto": "人生苦短"}})
+        return_value=httpx.Response(
+            200, json={"code": 200, "message": "ok", "data": {"hitokoto": "人生苦短"}}
+        )
     )
     result = await api_client.get_hitokoto()
     assert result == "人生苦短"
@@ -102,7 +114,9 @@ async def test_get_hitokoto(api_client: SixtyApiClient) -> None:
 @respx.mock
 async def test_get_moyu(api_client: SixtyApiClient) -> None:
     respx.get("https://60s.viki.moe/v2/moyu").mock(
-        return_value=httpx.Response(200, json={"code": 200, "message": "ok", "data": ["摸鱼1", "摸鱼2"]})
+        return_value=httpx.Response(
+            200, json={"code": 200, "message": "ok", "data": ["摸鱼1", "摸鱼2"]}
+        )
     )
     result = await api_client.get_moyu()
     assert result == "摸鱼1\n摸鱼2"
