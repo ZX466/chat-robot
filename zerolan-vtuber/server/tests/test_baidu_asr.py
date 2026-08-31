@@ -40,9 +40,7 @@ async def test_transcribe_ok(load_fixture):
 @respx.mock
 async def test_transcribe_err_no_raises(load_fixture):
     respx.post(TOKEN_URL).respond(json={"access_token": "tok-1", "expires_in": 2592000})
-    respx.post("https://vop.baidu.com/server_api").respond(
-        json=load_fixture("baidu_asr_err.json")
-    )
+    respx.post("https://vop.baidu.com/server_api").respond(json=load_fixture("baidu_asr_err.json"))
     provider = _provider()
 
     with pytest.raises(BaiduASRError):

@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 from loguru import logger
 
+from app.providers.http import get_shared_client
 from app.tools.registry import Tool
 
 
@@ -75,8 +76,19 @@ class SearchProvider:
         ]
 
 
+_SEARCH_PROVIDER: SearchProvider | None = None
+
+
+def _get_provider() -> SearchProvider:
+    """P0-3：模块级单例，复用全局连接池（close 生命周期交给 close_shared_client）。"""
+    global _SEARCH_PROVIDER
+    if _SEARCH_PROVIDER is None:
+        _SEARCH_PROVIDER = SearchProvider(client=get_shared_client())
+    return _SEARCH_PROVIDER
+
+
 async def _web_search_handler(query: str, max_results: int = 5) -> str:
-    results = await SearchProvider().search(query, max_results)
+    results = await _get_provider().search(query, max_results)
     if not results:
         return "No results."
     lines = [f"- {r.title}\n  URL: {r.url}\n  {r.snippet[:200]}" for r in results]

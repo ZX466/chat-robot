@@ -49,9 +49,7 @@ async def test_synthesize_voice_mapped_to_per():
 @respx.mock
 async def test_synthesize_json_error_raises(load_fixture):
     respx.post(TOKEN_URL).respond(json={"access_token": "tok-1", "expires_in": 2592000})
-    respx.post("https://tsn.baidu.com/text2audio").respond(
-        json=load_fixture("baidu_tts_err.json")
-    )
+    respx.post("https://tsn.baidu.com/text2audio").respond(json=load_fixture("baidu_tts_err.json"))
     provider = _provider()
 
     with pytest.raises(BaiduTTSError):

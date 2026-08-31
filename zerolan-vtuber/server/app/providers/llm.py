@@ -14,6 +14,7 @@ import litellm
 from loguru import logger
 
 from app.config import LLMConfig
+from app.providers.http import get_shared_client
 
 if TYPE_CHECKING:
     from litellm import Router  # type: ignore[attr-defined]
@@ -113,6 +114,7 @@ class LLMProvider:
             "model": self._config.model,
             "messages": messages,
             "temperature": self._config.temperature,
+            "client": get_shared_client(),  # P0-2：连接池复用，避免每次新建
         }
         if tools:
             kwargs["tools"] = tools
@@ -148,6 +150,7 @@ class LLMProvider:
             "messages": messages,
             "temperature": self._config.temperature,
             "stream": True,
+            "client": get_shared_client(),  # P0-2：连接池复用，避免每次新建
         }
         if tools:
             kwargs["tools"] = tools

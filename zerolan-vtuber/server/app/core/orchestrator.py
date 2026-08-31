@@ -127,3 +127,7 @@ class Orchestrator:
             self._tts_config = tts_config
             self._tts = create_tts_provider(tts_config)
             logger.info("TTS provider hot-swapped: {}", tts_config.vendor)
+
+    async def close(self) -> None:
+        """释放资源（History 连接等；P1-3 防 aiosqlite worker 线程挂起进程）。"""
+        await self._history.close()

@@ -13,9 +13,7 @@ QUERY_URL = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/query"
 
 
 def _provider() -> VolcanoASRProvider:
-    return VolcanoASRProvider(
-        VolcanoASRConfig(api_key="ak", poll_interval=0.0, max_poll_times=5)
-    )
+    return VolcanoASRProvider(VolcanoASRConfig(api_key="ak", poll_interval=0.0, max_poll_times=5))
 
 
 @respx.mock
@@ -70,9 +68,7 @@ async def test_transcribe_text_result():
 async def test_transcribe_silent_audio_returns_empty():
     respx.post(SUBMIT_URL).respond(headers={"X-Api-Status-Code": "20000001"}, json={})
     respx.post(QUERY_URL).mock(
-        side_effect=[
-            httpx.Response(200, headers={"X-Api-Status-Code": "20000003"}, json={})
-        ]
+        side_effect=[httpx.Response(200, headers={"X-Api-Status-Code": "20000003"}, json={})]
     )
     provider = _provider()
 
@@ -101,10 +97,7 @@ async def test_transcribe_failure_raises():
 async def test_transcribe_timeout():
     respx.post(SUBMIT_URL).respond(headers={"X-Api-Status-Code": "20000001"}, json={})
     respx.post(QUERY_URL).mock(
-        side_effect=[
-            httpx.Response(200, headers={"X-Api-Status-Code": "20000001"}, json={})
-        ]
-        * 10
+        side_effect=[httpx.Response(200, headers={"X-Api-Status-Code": "20000001"}, json={})] * 10
     )
     provider = _provider()
 

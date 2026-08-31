@@ -12,7 +12,14 @@ from app.config import settings
 from app.core.agent_loop import AgentLoop
 from app.core.history import History
 from app.core.orchestrator import Orchestrator
-from app.providers.config import ASRSlotConfig, BaiduASRConfig, BaiduTTSConfig, TTSSlotConfig
+from app.providers.config import (
+    ASRSlotConfig,
+    BaiduASRConfig,
+    BaiduTTSConfig,
+    MimoTTSConfig,
+    TTSSlotConfig,
+    VolcanoASRConfig,
+)
 from app.providers.llm import LLMProvider
 from app.tools.registry import ToolRegistry
 from app.tools.web_search import register_web_search
@@ -27,14 +34,33 @@ def build_orchestrator() -> Orchestrator:
     """装配完整依赖：providers → tools → agent_loop → orchestrator。"""
     history = History(settings.history.db_path)
 
-    asr_config: ASRSlotConfig = BaiduASRConfig(
-        api_key=settings.asr.api_key or "",
-        secret_key=settings.asr.api_key or "",
-    )
-    tts_config: TTSSlotConfig = BaiduTTSConfig(
-        api_key=settings.tts.api_key or "",
-        secret_key=settings.tts.api_key or "",
-    )
+    # P1-2：按 settings 的 vendor 构建槽位（非法值换代默认走 baidu）
+    asr_cfg = settings.asr
+    if asr_cfg.vendor == "volcano":
+        asr_config: ASRSlotConfig = VolcanoASRConfig(
+            api_key=asr_cfg.api_key or "",
+            base_url=asr_cfg.base_url or "",
+            model=asr_cfg.model or "bigmodel",
+        )
+    else:
+        asr_config = BaiduASRConfig(
+            api_key=asr_cfg.api_key or "",
+            secret_key=asr_cfg.secret_key or "",
+        )
+
+    tts_cfg = settings.tts
+    if tts_cfg.vendor == "mimo":
+        tts_config: TTSSlotConfig = MimoTTSConfig(
+            api_key=tts_cfg.api_key or "",
+            base_url=tts_cfg.base_url or "",
+            model=tts_cfg.model or "mimo-v2.5-tts",
+            voice=tts_cfg.voice or "Chloe",
+        )
+    else:
+        tts_config = BaiduTTSConfig(
+            api_key=tts_cfg.api_key or "",
+            secret_key=tts_cfg.secret_key or "",
+        )
 
     llm = LLMProvider(settings.llm)
 

@@ -39,17 +39,24 @@ class ZerolanProtocol(BaseModel):
 # --- 各 action 的 data 载荷（data 形状待 kiro 规格清单产出后核对） ---
 
 
-class ServerHelloData(BaseModel):
-    """client_hello → server_hello 载荷。
+class ProviderMask(BaseModel):
+    """provider 掩码：{provider, masked}，永不暴露 key 明文（spec §3.1）。"""
 
-    含 ws/http 服务地址与三组 provider 掩码（如 deepseek/k***）供客户端回显。
+    provider: str
+    masked: str
+
+
+class ServerHelloData(BaseModel):
+    """client_hello → server_hello 载荷（spec §3.1 结构）。
+
+    ws_port/res_port 供客户端端口配置；providers 为三组 {provider, masked} 掩码。
     """
 
+    ws_port: int
+    res_port: int
     ws_url: str
     http_url: str
-    llm_provider: str | None
-    asr_provider: str | None
-    tts_provider: str | None
+    providers: dict[str, ProviderMask]  # {llm, asr, tts}
 
 
 class UpdateProviderConfigData(BaseModel):
@@ -61,7 +68,14 @@ class UpdateProviderConfigData(BaseModel):
 
 
 class PlaySpeechData(BaseModel):
-    """play_speech 载荷：TTS 音频的 HTTP 下载地址。"""
+    """play_speech 载荷：TTS 音频元信息 + HTTP 下载地址（客户端 DTO 全字段）。"""
 
+    bot_id: str
+    bot_display_name: str
+    file_id: str  # 音频下载凭据（GET /resource/file?file_id=）
+    transcript: str
+    audio_type: str
+    duration: float  # 秒
+    channels: int
+    sample_rate: int
     url: str
-    duration_ms: int | None = None

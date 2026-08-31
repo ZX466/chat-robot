@@ -91,7 +91,7 @@ async def test_agent_loop_rounds_and_truncate() -> None:
 
     # agent_loop 主逻辑：mock provider 但需要真实参数注入 —— 用 monkeypatch 的 _provider
     # 此处验证 truncate 与历史组装逻辑分点：结果注入长度上限在 _invoke。
-    tc = ToolCall(id="t2", name="echo", arguments=f'{{"text":"{ "b" * 3000 }"}}')
+    tc = ToolCall(id="t2", name="echo", arguments=f'{{"text":"{"b" * 3000}"}}')
     history = await loop._invoke(tc)
     assert history["role"] == "tool"
     assert history["content"].startswith("bbb")

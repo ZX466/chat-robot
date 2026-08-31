@@ -25,6 +25,7 @@ class ASRConfig(BaseModel):
     vendor: Literal["baidu", "volcano"] = "baidu"
     base_url: str | None = None
     api_key: str | None = None
+    secret_key: str | None = None  # 百度 AK/SK 双 key（P1-1）
     model: str | None = None
 
 
@@ -32,6 +33,7 @@ class TTSConfig(BaseModel):
     vendor: Literal["baidu", "mimo"] = "baidu"
     base_url: str | None = None
     api_key: str | None = None
+    secret_key: str | None = None  # 百度 AK/SK 双 key（P1-1）
     model: str | None = None
     voice: str | None = None
 

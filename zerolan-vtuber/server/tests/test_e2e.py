@@ -17,7 +17,9 @@ os.environ.setdefault("LITELLM_LOG", "ERROR")
 from app.config import settings as _settings  # noqa: E402
 
 _settings.asr.api_key = "fake"
+_settings.asr.secret_key = "fake"  # P1-1：AK/SK 独立字段
 _settings.tts.api_key = "fake"
+_settings.tts.secret_key = "fake"
 
 import pytest  # noqa: E402
 
@@ -108,13 +110,19 @@ async def test_ws_text_flow_emits_play_speech(tmp_path: Path) -> None:
     fake_ws = FakeWS()
     hub._connections["s1"] = fake_ws  # noqa: SLF001 — 注册测试连接以接收广播
     await hub._on_user_text(fake_ws, "s1", "你好")  # noqa: SLF001
+    await orch.close()  # P1-3：显式关闭，防 aiosqlite worker 线程挂起进程
     actions = [m["action"] for m in sent]
     assert "play_speech" in actions
     assert "show_user_text_input" in actions
-    assert "add_history" in actions
+    assert "add_history" not in actions  # D5：user 输入不再广播 add_history
     speech = next(m for m in sent if m["action"] == "play_speech")
-    assert "audio/" in speech["data"]["url"]
-    assert speech["data"]["url"].endswith(".wav") is False  # {id} 无扩展名
+    data = speech["data"]
+    assert "resource/file" in data["url"]  # D1：客户端经 GET /resource/file 下载
+    assert data["file_id"]  # D1：file_id 即下载凭据
+    assert data["transcript"]  # D1：transcript 供客户端字幕
+    assert data["audio_type"] == "wav"
+    assert data["channels"] >= 1
+    assert data["sample_rate"] >= 8000
 
 
 @pytest.mark.parametrize(
@@ -175,9 +183,7 @@ def test_build_configs() -> None:
 
 
 @pytest.mark.asyncio
-async def test_http_microphone_flow(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_http_microphone_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """multipart POST /playground/microphone → ASR → 文本 → 编排 → 200。"""
     orch = await make_orchestrator(tmp_path)
     # 替换 app 全局路由引用，避免连真 provider（todo：注入式重构后去除）
@@ -188,14 +194,17 @@ async def test_http_microphone_flow(
     from httpx import ASGITransport, AsyncClient
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.post(
-            "/playground/microphone",
-            files={"audio": ("voice.wav", b"\x00\x01" * 100, "audio/wav")},
-            data={"metadata": json.dumps({"Channels": 1, "SampleRate": 16000})},
-        )
-        health = await client.get("/health")
+        try:
+            resp = await client.post(
+                "/playground/microphone",
+                files={"audio": ("voice.wav", b"\x00\x01" * 100, "audio/wav")},
+                data={"metadata": json.dumps({"Channels": 1, "SampleRate": 16000})},
+            )
+            health = await client.get("/health")
+        finally:
+            await orch.close()  # P1-3：显式关闭，防 aiosqlite worker 线程挂起
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["code"] == 200
+    assert body["code"] == 0  # D4：客户端 HttpResponseCode.Success=0
     assert body["data"]["transcript"] == "语音识别测试文本"
     assert health.status_code == 200
