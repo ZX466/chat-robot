@@ -23,6 +23,10 @@ else:
 
 litellm.set_verbose = False  # type: ignore[attr-defined]
 
+# P0-2：真注入共享 httpx 连接池（pi 复核：kwargs["client"] 被 litellm 静默丢弃，
+# 正路是 aclient_session 全局绑定；litellm 内部以此为底复用连接）
+litellm.aclient_session = get_shared_client()
+
 
 @dataclass(frozen=True)
 class ToolCall:
@@ -114,7 +118,6 @@ class LLMProvider:
             "model": self._config.model,
             "messages": messages,
             "temperature": self._config.temperature,
-            "client": get_shared_client(),  # P0-2：连接池复用，避免每次新建
         }
         if tools:
             kwargs["tools"] = tools
@@ -150,7 +153,6 @@ class LLMProvider:
             "messages": messages,
             "temperature": self._config.temperature,
             "stream": True,
-            "client": get_shared_client(),  # P0-2：连接池复用，避免每次新建
         }
         if tools:
             kwargs["tools"] = tools
