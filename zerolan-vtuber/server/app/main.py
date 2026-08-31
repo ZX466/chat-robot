@@ -1,5 +1,6 @@
 """FastAPI 入口：挂载 WS 与 HTTP 路由，装配 providers/tools/orchestrator。"""
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -10,6 +11,7 @@ from app.api.http import setup_http_routes
 from app.api.ws import WSHub
 from app.config import settings
 from app.core.agent_loop import AgentLoop
+from app.core.broadcast import BroadcastScheduler
 from app.core.history import History
 from app.core.orchestrator import Orchestrator
 from app.providers.config import (
@@ -86,7 +88,26 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.server.ws_port,
         settings.server.http_port,
     )
+    broadcast_task: asyncio.Task[None] | None = None
+    if settings.broadcast.enabled:
+        broker = BroadcastScheduler(
+            orchestrator,
+            cron=settings.broadcast.cron,
+            text=settings.broadcast.text,
+        )
+        broadcast_task = asyncio.create_task(broker.run())
+        logger.info(
+            "broadcast scheduler enabled: cron={} text={!r}",
+            settings.broadcast.cron,
+            settings.broadcast.text,
+        )
     yield
+    if broadcast_task is not None:
+        broadcast_task.cancel()
+        try:
+            await broadcast_task
+        except asyncio.CancelledError:
+            logger.info("broadcast scheduler stopped")
     await app.state.history.close()
 
 
