@@ -109,6 +109,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         except asyncio.CancelledError:
             logger.info("broadcast scheduler stopped")
     await app.state.history.close()
+    # P2(codex)：关停时释放 httpx 共享连接池（ASR/TTS/LLM/web_search 共用）
+    from app.providers.http import close_shared_client
+
+    await close_shared_client()
 
 
 app = FastAPI(title="zerolan-vtuber", version="0.1.0", lifespan=lifespan)
