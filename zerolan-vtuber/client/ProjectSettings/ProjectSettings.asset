@@ -875,6 +875,7 @@ PlayerSettings:
   webWasm2023: 0
   scriptingDefineSymbols:
     Android: VUFORIA_ANDROID_SETTINGS
+    Standalone: LIVE2D_SDK_INSTALLED
     Windows Store Apps: VUFORIA_WSA_SETTINGS
     iPhone: VUFORIA_IOS_SETTINGS
   additionalCompilerArguments: {}
