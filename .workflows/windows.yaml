@@ -28,7 +28,7 @@ jobs:
         id: build-action
         with:
           targetPlatform: StandaloneWindows64
-          projectPath: ./tjcloudbuild/zerolan-vtuber/client
+          projectPath: ./tjcloudbuild
 
       # 检查构建结果是否成功生成
       - name: Check build result
