@@ -30,8 +30,7 @@ class BaiduTokenManager:
         client: httpx.AsyncClient | None = None,
         refresh_margin: int = 60,
     ) -> None:
-        if not api_key or not secret_key:
-            raise ValueError("Baidu api_key and secret_key must be provided")
+        # 部署宽容：key 允许为空启动（如仅配 llm 也能起服务），首次取 token 时报错
         self._api_key = api_key
         self._secret_key = secret_key
         self._client = client or get_shared_client()
@@ -60,6 +59,8 @@ class BaiduTokenManager:
             await self._client.aclose()
 
     async def _refresh(self) -> None:
+        if not self._api_key or not self._secret_key:
+            raise BaiduTokenError("Baidu api_key and secret_key must be provided")
         response = await self._client.post(
             TOKEN_URL,
             params={
