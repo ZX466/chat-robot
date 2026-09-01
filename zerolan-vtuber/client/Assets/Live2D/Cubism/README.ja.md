@@ -18,19 +18,11 @@ SDKパッケージのダウンロードページをお探しの場合は、[ダ�
 
 ご使用前に[お知らせ](NOTICE.ja.md)をお読みください。
 
-## Cubism 5.3新機能や過去バージョンとの互換性について
+## Cubism 5新機能や過去バージョンとの互換性について
 
-本 SDK はCubism 5.3に対応した製品です。  
-Cubism 5.3 Editorに搭載された新機能のSDK対応については [こちら](https://docs.live2d.com/cubism-sdk-manual/cubism-5-3-new-functions/)をご確認ください。  
-過去バージョンのCubism SDKとの互換性については [こちら](https://docs.live2d.com/cubism-sdk-manual/compatibility-with-cubism-5-3/)をご確認ください。
-
-## 動作要件
-
-本 SDK は **Universal Render Pipeline（URP）** を前提としており、モデルの描画にはカスタムレンダーパスの利用が必要です。
-詳しくは[Cubism 5 SDK for Unity R4_1 以前との違い](https://docs.live2d.com/cubism-sdk-manual/differences-from-before-unity-r4_1/) や [Built-in Render PipelineからURPへの移行について](https://docs.live2d.com/cubism-sdk-manual/migration-from-birp-to-urp/) をご確認ください。
-なお**Built-in Render Pipeline** および **High Definition Render Pipeline（HDRP）** はサポートしておりません。
-
-**Input System** パッケージ（`com.unity.inputsystem`）との併用を想定しています。旧来の Input Manager のみのプロジェクトでは、Unity の手順に従い Input System の追加やプロジェクト設定の調整が必要になる場合があります。
+本 SDK はCubism 5に対応した製品です。  
+Cubism 5 Editorに搭載された新機能のSDK対応については [こちら](https://docs.live2d.com/cubism-sdk-manual/cubism-5-new-functions/)をご確認ください。  
+過去バージョンのCubism SDKとの互換性については [こちら](https://docs.live2d.com/cubism-sdk-manual/compatibility-with-cubism-5/)をご確認ください。
 
 ## 構造
 
@@ -44,7 +36,7 @@ Cubism 5.3 Editorに搭載された新機能のSDK対応については [こち�
 
 #### フレームワーク
 
-このグループのコンポーネントとクラスは、リップシンクやCubismの組み込み用ファイルとUnityの統合などの追加機能を提供します。CubismファイルをプレハブとAnimationClipに変換する機能はここにあります。すべてのフレームワークコードは`./Assets/Live2D/Cubism/Framework`にあります。
+このグループのコンポーネントとクラスは、リップシンクやCubismの組み込み用ファイルとUnityの統合などの追加機能を提供します。CubismファイルをプレハブとAnimationClipに変換するのはここで行われます。すべてのフレームワークコードは`./Assets/Live2D/Cubism/Framework`にあります。
 
 #### レンダリング
 
@@ -62,17 +54,27 @@ Unity Editor拡張機能は、`./Assets/Live2D/Cubism/Editor`にあります。
 
 | Unity | バージョン |
 | --- | --- |
-| LTS | 6000.3.11f1 |
-| LTS | 6000.0.71f1 |
+| Latest | 2023.2.14f1 (*1) |
+| LTS | 2022.3.21f1 |
+| LTS | 2021.3.36f1 |
+
+*1 ARMv7のAndroidは非対応です。
 
 | ライブラリ / ツール | バージョン |
 | --- | --- |
 | Android SDK / NDK | *2 |
-| Visual Studio 2022 | 17.14.29 |
-| Windows SDK | 10.0.26100.7705 |
-| Xcode | 26.3 |
+| Visual Studio 2022 | 17.9.3 |
+| Windows SDK | 10.0.22621.0 |
+| Xcode | 15.3 |
 
 *2 Unityに組み込まれたライブラリまたは推奨ライブラリを使用してください。
+
+| HarmonyOS NEXT 対応ツール | バージョン |
+| --- | --- |
+| Tuanjie | 1.0.1 |
+| DevEco Studio *3 | 4.0 |
+
+*3 中国国外でのHarmonyOS NEXT向けビルドはDevEcoを通じてビルドする必要があります。
 
 ### C#コンパイラ
 
@@ -88,15 +90,18 @@ https://docs.unity3d.com/ja/2018.4/Manual/CSharpCompiler.html
 
 | プラットフォーム | バージョン |
 | --- | --- |
-| Android | 16 |
-| iOS | 26.4 |
-| iPadOS | 26.4 |
-| Ubuntu | 24.04.3 |
-| macOS | 26.4 |
-| Windows 11 | 25H2 (*4) |
-| Google Chrome | 146.0.7680.165 |
+| Android | 14 |
+| iOS | 17.4 |
+| iPadOS | 17.4 |
+| Ubuntu | 20.04.6 |
+| macOS | 14.4 |
+| Windows 11 | 23H2 |
+| Google Chrome | 122.0.6261.129 |
+| Chrome OS 64bit (x86_64) | 122.0.6261.118 |
+| Chrome OS 32bit (ARMv8) (*3) | 122.0.6261.118 |
+| HarmonyOS NEXT | 4.0.0.66 |
 
-*4 UWP向けビルドは動作確認をしておりません。
+*3 Android向けAPKファイルでの動作確認です。
 
 ## ブランチ
 

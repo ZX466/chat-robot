@@ -18,18 +18,12 @@ Please read the [license](LICENSE.md) before use.
 
 Please read the [notices](NOTICE.md) before use.
 
-## Compatibility with Cubism 5.3 new features and previous Cubism SDK versions
+## Compatibility with Cubism 5 new features and previous Cubism SDK versions
 
-This SDK is compatible with Cubism 5.3.  
-For SDK compatibility with new features in Cubism 5.3 Editor, please refer to [here](https://docs.live2d.com/en/cubism-sdk-manual/cubism-5-3-new-functions/).  
-For compatibility with previous versions of Cubism SDK, please refer to [here](https://docs.live2d.com/en/cubism-sdk-manual/compatibility-with-cubism-5-3/).
+This SDK is compatible with Cubism 5.  
+For SDK compatibility with new features in Cubism 5 Editor, please refer to [here](https://docs.live2d.com/en/cubism-sdk-manual/cubism-5-new-functions/).  
+For compatibility with previous versions of Cubism SDK, please refer to [here](https://docs.live2d.com/en/cubism-sdk-manual/compatibility-with-cubism-5/).
 
-## Runtime requirements
-
-This SDK targets the **Universal Render Pipeline (URP)** and requires custom render passes for drawing models. Please check [Differences from Cubism 5 SDK for Unity R4_1 and earlier](https://docs.live2d.com/en/cubism-sdk-manual/differences-from-before-unity-r4_1/) and [Migration from Built-in Render Pipeline to URP](https://docs.live2d.com/en/cubism-sdk-manual/migration-from-birp-to-urp/).
-The **Built-in Render Pipeline** and **High Definition Render Pipeline (HDRP)** are not supported. 
-
-Use with the **Input System** package (`com.unity.inputsystem`) is expected. Projects that rely only on the legacy Input Manager may need to add the package or adjust project settings following Unity’s documentation.
 
 ## Structure
 
@@ -43,7 +37,7 @@ Components and classes in this group are a shim layer for wrapping the unmanaged
 
 #### Framework
 
-Components and classes in this group provide additional functionality like lip-syncing, as well as integration of "foreign" Cubism files with Unity. The feature to convert Cubism files into Prefabs and AnimationClips is here.All the framework code is located in `./Assets/Live2D/Cubism/Framework`.
+Components and classes in this group provide additional functionality like lip-syncing, as well as integration of "foreign" Cubism files with Unity. Turning Cubism files into Prefabs and AnimationClips is done here. All the framework code is located in `./Assets/Live2D/Cubism/Framework`.
 
 #### Rendering
 
@@ -61,17 +55,27 @@ Resources like shaders and other assets are located in `./Assets/Live2D/Cubism/R
 
 | Unity | Version |
 | --- | --- |
-| LTS | 6000.3.11f1 |
-| LTS | 6000.0.71f1 |
+| Latest | 2023.2.14f1 (*1) |
+| LTS | 2022.3.21f1 |
+| LTS | 2021.3.36f1 |
+
+*1 ARMv7 Android is not supported.
 
 | Library / Tool | Version |
 | --- | --- |
 | Android SDK / NDK | *2 |
-| Visual Studio 2022 | 17.14.29 |
-| Windows SDK | 10.0.26100.7705 |
-| Xcode | 26.3 |
+| Visual Studio 2022 | 17.9.3 |
+| Windows SDK | 10.0.22621.0 |
+| Xcode | 15.3 |
 
 *2 Use libraries embedded with Unity or recommended.
+
+| HarmonyOS NEXT Supported Tools | Version |
+| --- | --- |
+| Tuanjie | 1.0.1 |
+| DevEco Studio *3 | 4.0 |
+
+*3 Builds for HarmonyOS NEXT outside of China must be built through DevEco.
 
 ### C# compiler
 
@@ -87,15 +91,18 @@ https://docs.unity3d.com/ja/2018.4/Manual/CSharpCompiler.html
 
 | Platform | Version |
 | --- | --- |
-| Android | 16 |
-| iOS | 26.4 |
-| iPadOS | 26.4 |
-| Ubuntu | 24.04.3 |
-| macOS | 26.4 |
-| Windows 11 | 25H2 (*4) |
-| Google Chrome | 146.0.7680.165 |
+| Android | 14 |
+| iOS | 17.4 |
+| iPadOS | 17.4 |
+| Ubuntu | 20.04.6 |
+| macOS | 14.4 |
+| Windows 11 | 23H2 |
+| Google Chrome | 122.0.6261.129 |
+| Chrome OS 64bit (x86_64) | 122.0.6261.118 |
+| Chrome OS 32bit (ARMv8) (*3) | 122.0.6261.118 |
+| HarmonyOS NEXT | 4.0.0.66 |
 
-*4 We have not verified the operation of builds for UWP.
+*3 This is a confirmation of operation with APK files for Android.
 
 ## Branches
 

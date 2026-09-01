@@ -65,17 +65,12 @@ namespace Live2D.Cubism.Editor.Importers
         /// <summary>
         /// Material picker to use when importing models.
         /// </summary>
-        public static CubismModel3Json.DrawableMaterialPicker OnPickDrawableMaterial = CubismBuiltinPickers.DrawableMaterialPicker;
+        public static CubismModel3Json.MaterialPicker OnPickMaterial = CubismBuiltinPickers.MaterialPicker;
 
         /// <summary>
         /// Texture picker to use when importing models.
         /// </summary>
         public static CubismModel3Json.TexturePicker OnPickTexture = CubismBuiltinPickers.TexturePicker;
-
-        /// <summary>
-        /// Offscreen material picker to use when importing models.
-        /// </summary>
-        public static CubismModel3Json.OffscreenMaterialPicker OnPickOffscreenMaterial = CubismBuiltinPickers.OffscreenMaterialPicker;
 
 
         /// <summary>
@@ -224,31 +219,18 @@ namespace Live2D.Cubism.Editor.Importers
         {
             var textureImporter = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(texture)) as TextureImporter;
 
-            if (!textureImporter)
-            {
-                Debug.LogError("[Texture Importer] Could not get TextureImporter for texture used by Cubism model.");
-                return;
-            }
 
             // Return early if texture already seems to be set up.
-            if (!textureImporter.mipmapEnabled
-                && textureImporter.alphaIsTransparency
-                && textureImporter.textureType == TextureImporterType.Default
-                && textureImporter.textureCompression == TextureImporterCompression.Uncompressed
-                && textureImporter.wrapMode == TextureWrapMode.Repeat
-                && textureImporter.filterMode == FilterMode.Bilinear)
+            if (textureImporter.alphaIsTransparency)
             {
                 return;
             }
 
 
             // Set up texture importing.
-            textureImporter.mipmapEnabled = false;
             textureImporter.alphaIsTransparency = true;
             textureImporter.textureType = TextureImporterType.Default;
-            textureImporter.textureCompression = TextureImporterCompression.Uncompressed;
-            textureImporter.wrapMode = TextureWrapMode.Repeat;
-            textureImporter.filterMode = FilterMode.Bilinear;
+
 
             EditorUtility.SetDirty(texture);
             textureImporter.SaveAndReimport();

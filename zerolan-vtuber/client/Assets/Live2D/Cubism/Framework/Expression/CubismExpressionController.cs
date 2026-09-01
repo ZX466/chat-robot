@@ -95,12 +95,7 @@ namespace Live2D.Cubism.Framework.Expression
             if(_playingExpressions.Count > 0)
             {
                 var playingExpression = _playingExpressions[_playingExpressions.Count - 1];
-                var newExpressionEndTime = playingExpression.ExpressionUserTime + playingExpression.FadeOutTime;
-
-                if (playingExpression.ExpressionEndTime == 0.0f || newExpressionEndTime < playingExpression.ExpressionEndTime)
-                {
-                    playingExpression.ExpressionEndTime = newExpressionEndTime;
-                }
+                playingExpression.ExpressionEndTime = playingExpression.ExpressionUserTime + playingExpression.FadeOutTime;
                 _playingExpressions[_playingExpressions.Count - 1] = playingExpression;
             }
 
@@ -195,7 +190,7 @@ namespace Live2D.Cubism.Framework.Expression
                             playingExpression.Destinations[i].MultiplyValueBy(playingExpression.Value[i], playingExpression.FadeWeight);
                             break;
                         case CubismParameterBlendMode.Override:
-                            playingExpression.Destinations[i].OverrideValue(playingExpression.Destinations[i].Value * (1 - playingExpression.FadeWeight) + (playingExpression.Value[i] * playingExpression.FadeInWeight));
+                            playingExpression.Destinations[i].Value = playingExpression.Destinations[i].Value * (1 - playingExpression.FadeWeight) + (playingExpression.Value[i] * playingExpression.FadeInWeight);
                             break;
                         default:
                             // When an unspecified value is set, it is already in addition mode.
@@ -255,13 +250,10 @@ namespace Live2D.Cubism.Framework.Expression
                     // If the parameter does not exist in the list, add a new one.
                     CubismExpressionParameterValue item = new CubismExpressionParameterValue();
                     item.Parameter = playingExpression.Destinations[i];
-                    if (item.Parameter != null)
-                    {
-                        item.AdditiveValue = DefaultAdditiveValue;
-                        item.MultiplyValue = DefaultMultiplyValue;
-                        item.OverwriteValue = item.Parameter.Value;
-                        _expressionParameterValues.Add(item);
-                    }
+                    item.AdditiveValue = DefaultAdditiveValue;
+                    item.MultiplyValue = DefaultMultiplyValue;
+                    item.OverwriteValue = item.Parameter.Value;
+                    _expressionParameterValues.Add(item);
                 }
 
                 // ------ Calculate value ------
@@ -294,7 +286,7 @@ namespace Live2D.Cubism.Framework.Expression
             for (var i = 0; i < _expressionParameterValues.Count; i++)
             {
                 var expressionParameterValue = _expressionParameterValues[i];
-                expressionParameterValue.Parameter.OverrideValue(
+                expressionParameterValue.Parameter.BlendToValue(CubismParameterBlendMode.Override,
                     (expressionParameterValue.OverwriteValue + expressionParameterValue.AdditiveValue)
                         * expressionParameterValue.MultiplyValue,
                     expressionWeight);

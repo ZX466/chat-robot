@@ -10,6 +10,8 @@
 #define CUBISM_CG_INCLUDED
 
 
+#include "UnityCG.cginc"
+
 
 inline float4 CubismGetMaskChannel(float4 tile)
 {

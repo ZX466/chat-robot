@@ -152,7 +152,7 @@ namespace Live2D.Cubism.Framework.MotionFade
                 var latestPlayingMotion = playingMotions[playingMotions.Count - 1];
 
                 var playingMotionData = latestPlayingMotion.Motion;
-                var elapsedTime = time - latestPlayingMotion.FadeInStartTime;
+                var elapsedTime = time - latestPlayingMotion.StartTime;
                 for (var j = 0; j < playingMotionData.ParameterFadeInTimes.Length; j++)
                 {
                     if ((elapsedTime <= playingMotionData.FadeInTime) ||
@@ -228,6 +228,31 @@ namespace Live2D.Cubism.Framework.MotionFade
 
             var time = Time.time;
 
+            // Set playing motions end time.
+            if ((playingMotions.Count > 0) && (playingMotions[playingMotions.Count - 1].Motion != null) && (playingMotions[playingMotions.Count - 1].IsLooping))
+            {
+                var motion = playingMotions[playingMotions.Count - 1];
+
+                var newEndTime = time + motion.Motion.FadeOutTime;
+
+                motion.EndTime = newEndTime;
+
+
+                while (true)
+                {
+                    if ((motion.StartTime + motion.Motion.MotionLength) >= time)
+                    {
+                        break;
+                    }
+
+                    motion.StartTime += motion.Motion.MotionLength;
+                }
+
+
+                playingMotions[playingMotions.Count - 1] = motion;
+            }
+
+
             // Calculate MotionFade.
             for (var i = 0; i < playingMotions.Count; i++)
             {
@@ -239,7 +264,7 @@ namespace Live2D.Cubism.Framework.MotionFade
                     continue;
                 }
 
-                var elapsedTime = time - playingMotion.FadeInStartTime;
+                var elapsedTime = time - playingMotion.StartTime;
                 var endTime = playingMotion.EndTime - elapsedTime;
 
                 var fadeInTime = fadeMotion.FadeInTime;
@@ -249,14 +274,16 @@ namespace Live2D.Cubism.Framework.MotionFade
                 var fadeInWeight = (fadeInTime <= 0.0f)
                     ? 1.0f
                     : CubismFadeMath.GetEasingSine(elapsedTime / fadeInTime);
-                var fadeOutWeight = (fadeOutTime <= 0.0f || playingMotion.EndTime < 0.0f)
+                var fadeOutWeight = (fadeOutTime <= 0.0f)
                     ? 1.0f
-                    : CubismFadeMath.GetEasingSine((playingMotion.EndTime - time) / fadeOutTime);
+                    : CubismFadeMath.GetEasingSine((playingMotion.EndTime - Time.time) / fadeOutTime);
 
 
                 playingMotions[i] = playingMotion;
 
-                var motionWeight = fadeInWeight * fadeOutWeight * layerWeight;
+                var motionWeight = (i == 0)
+                    ? (fadeInWeight * fadeOutWeight)
+                    : (fadeInWeight * fadeOutWeight * layerWeight);
 
                 // Apply to parameter values
                 for (var j = 0; j < DestinationParameters.Length; ++j)
@@ -279,26 +306,11 @@ namespace Live2D.Cubism.Framework.MotionFade
                         continue;
                     }
 
-
-                    var value = fadeMotion.ParameterCurves[index].Evaluate(elapsedTime);
-
-                    if (DestinationParameters[j].IsRepeat())
-                    {
-                        value = DestinationParameters[j].GetParameterRepeatValue(value);
-                    }
-                    else
-                    {
-                        value = DestinationParameters[j].GetParameterClampValue(value);
-                    }
-
-                    value = Evaluate(
-                        value, elapsedTime, endTime,
-                        fadeInWeight, fadeOutWeight,
-                        fadeMotion.ParameterFadeInTimes[index], fadeMotion.ParameterFadeOutTimes[index],
-                        motionWeight, DestinationParameters[j].Value);
-
-
-                    DestinationParameters[j].OverrideValue(value);
+                    DestinationParameters[j].Value = Evaluate(
+                            fadeMotion.ParameterCurves[index], elapsedTime, endTime,
+                            fadeInWeight, fadeOutWeight,
+                            fadeMotion.ParameterFadeInTimes[index], fadeMotion.ParameterFadeOutTimes[index],
+                            motionWeight, DestinationParameters[j].Value);
                 }
 
                 // Apply to part opacities
@@ -356,37 +368,10 @@ namespace Live2D.Cubism.Framework.MotionFade
             }
 
             // Motion fade.
-            return Evaluate(
-                curve.Evaluate(elapsedTime), elapsedTime, endTime,
-                fadeInTime, fadeOutTime,
-                parameterFadeInTime, parameterFadeOutTime,
-                motionWeight, currentValue);
-        }
-
-        /// <summary>
-        /// Evaluate fade value.
-        /// </summary>
-        /// <param name="value">New value.</param>
-        /// <param name="elapsedTime">Elapsed Time.</param>
-        /// <param name="endTime">Fading end time.</param>
-        /// <param name="fadeInTime">Fade in time.</param>
-        /// <param name="fadeOutTime">Fade out time.</param>
-        /// <param name="parameterFadeInTime">Fade in time parameter.</param>
-        /// <param name="parameterFadeOutTime">Fade out time parameter.</param>
-        /// <param name="motionWeight">Motion weight.</param>
-        /// <param name="currentValue">Current value with weight applied.</param>
-        public float Evaluate(
-            float value, float elapsedTime, float endTime,
-            float fadeInTime, float fadeOutTime,
-            float parameterFadeInTime, float parameterFadeOutTime,
-            float motionWeight, float currentValue)
-        {
-
-            // Motion fade.
             if (parameterFadeInTime < 0.0f &&
                 parameterFadeOutTime < 0.0f)
             {
-                return currentValue + (value - currentValue) * motionWeight;
+                return currentValue + (curve.Evaluate(elapsedTime) - currentValue) * motionWeight;
             }
 
             // Parameter fade.
@@ -408,14 +393,14 @@ namespace Live2D.Cubism.Framework.MotionFade
             }
             else
             {
-                fadeOutWeight = (parameterFadeOutTime < float.Epsilon || (endTime < 0.0f))
+                fadeOutWeight = (parameterFadeOutTime < float.Epsilon)
                     ? 1.0f
                     : CubismFadeMath.GetEasingSine(endTime / parameterFadeOutTime);
             }
 
             var parameterWeight = fadeInWeight * fadeOutWeight;
 
-            return currentValue + (value - currentValue) * parameterWeight;
+            return currentValue + (curve.Evaluate(elapsedTime) - currentValue) * parameterWeight;
         }
 
         #endregion

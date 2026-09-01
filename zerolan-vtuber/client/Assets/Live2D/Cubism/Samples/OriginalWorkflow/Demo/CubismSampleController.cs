@@ -14,7 +14,6 @@ using Live2D.Cubism.Framework.Raycasting;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Live2D.Cubism.Samples.OriginalWorkflow.Demo
 {
@@ -152,21 +151,14 @@ namespace Live2D.Cubism.Samples.OriginalWorkflow.Demo
             SpecifiedAnimationCheck();
 
 
-            if(Pointer.current == null || !Pointer.current.press.wasPressedThisFrame)
+            if(!Input.GetMouseButtonDown(0))
             {
-                if (!_motionController.IsPlayingAnimation())
-                {
-                    Debug.Log("Body animation : Play : " + _loopMotion.name);
-
-                    _motionController.PlayAnimation(_loopMotion, priority: CubismMotionPriority.PriorityIdle);
-                }
                 return;
             }
 
 
             // Cast ray from pointer position.
-            var screenPosition = Pointer.current.position.ReadValue();
-            var ray = Camera.main.ScreenPointToRay(screenPosition);
+            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             var hitCount = _raycaster.Raycast(ray, _raycastResults);
 
 
@@ -231,9 +223,12 @@ namespace Live2D.Cubism.Samples.OriginalWorkflow.Demo
         /// Called at the end of the animation.
         /// </summary>
         /// <param name="instanceId"></param>
-        private void AnimationEnded(int instanceId)
+        private void AnimationEnded(float instanceId)
         {
-            Debug.Log("AnimationEnded");
+            // Play loop motion.
+            _motionController.PlayAnimation(_loopMotion, priority:CubismMotionPriority.PriorityIdle);
+
+            Debug.Log("Body animation : Play : " + _loopMotion.name);
         }
     }
 }

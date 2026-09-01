@@ -15,7 +15,7 @@ using UnityEngine;
 namespace Live2D.Cubism.Editor.Inspectors
 {
     /// <summary>
-    /// Inspector for <see cref="Live2D.Cubism.Rendering.CubismRenderController"/>s.
+    /// Inspector for <see cref="CubismRenderController"/>s.
     /// </summary>
     [CustomEditor(typeof(CubismRenderController))]
     internal sealed class CubismRenderControllerInspector : UnityEditor.Editor
@@ -44,18 +44,18 @@ namespace Live2D.Cubism.Editor.Inspectors
             // Show settings.
             EditorGUI.BeginChangeCheck();
 
+
             controller.Opacity = EditorGUILayout.Slider("Opacity", controller.Opacity, 0f, 1f);
-            controller.MultiplyColorEnabled = EditorGUILayout.Toggle("MultiplyColorEnabled", controller.MultiplyColorEnabled);
-            controller.ScreenColorEnabled = EditorGUILayout.Toggle("ScreenColorEnabled", controller.ScreenColorEnabled);
+            controller.OverwriteFlagForModelMultiplyColors = EditorGUILayout.Toggle("OverwriteFlagForModelMultiplyColors", controller.OverwriteFlagForModelMultiplyColors);
+            controller.OverwriteFlagForModelScreenColors = EditorGUILayout.Toggle("OverwriteFlagForModelScreenColors", controller.OverwriteFlagForModelScreenColors);
 
 
             ShowSorting = EditorGUILayout.Foldout(ShowSorting, "Sorting", EditorStyles.boldFont);
 
             if (ShowSorting)
             {
-                controller.GroupedSortingIndex = EditorGUILayout.IntField("Grouped Sorting Index", controller.GroupedSortingIndex);
                 controller.SortingLayer = EditorGUILayout.TextField("Layer", controller.SortingLayer);
-                controller.SortingOrder = EditorGUILayout.IntField("Order In Group", controller.SortingOrder);
+                controller.SortingOrder = EditorGUILayout.IntField("Order In Layer", controller.SortingOrder);
                 controller.SortingMode = (CubismSortingMode)EditorGUILayout.EnumPopup("Mode", (Enum)controller.SortingMode);
             }
 
