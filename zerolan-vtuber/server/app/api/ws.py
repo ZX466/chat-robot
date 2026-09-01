@@ -312,11 +312,9 @@ def _build_llm_config(data: Any) -> LLMConfig | None:
         return None
     # 校验层（_validate_provider_config）已保证 model 必填
     model = str(data["model"])
-    return LLMConfig(
-        base_url=str(data.get("base_url") or None),
-        api_key=str(data.get("api_key") or None),
-        model=model,
-    )
+    base_url = str(data.get("base_url") or "").strip() or None
+    api_key = str(data.get("api_key") or "").strip() or None
+    return LLMConfig(base_url=base_url, api_key=api_key, model=model)
 
 
 def _build_asr_config(data: Any) -> Any:
