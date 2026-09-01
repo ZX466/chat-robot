@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
-    "com.psygames.unitywebsocket": "https://github.com/psygames/UnityWebSocket.git#upm",
+    "com.cysharp.unitask": "file:Packages/UniTask",
+    "com.psygames.unitywebsocket": "file:Packages/UnityWebSocket",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.2d.tilemap": "1.0.0",
     "com.unity.ai.navigation": "2.0.8",
