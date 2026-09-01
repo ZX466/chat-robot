@@ -117,6 +117,9 @@ def test_build_llm_config_none_is_safe() -> None:
     assert _build_llm_config({}) is None
     cfg = _build_llm_config({"base_url": "https://x", "api_key": "k", "model": "m"})
     assert cfg is not None and cfg.model == "m"
+    # P3(codex)：空串不得变成 "None" 字面量（校验层拦截兜底 + 构造防御）
+    cfg2 = _build_llm_config({"base_url": "", "api_key": " ", "model": "m"})
+    assert cfg2 is not None and cfg2.base_url is None and cfg2.api_key is None
 
 
 @pytest.mark.asyncio
