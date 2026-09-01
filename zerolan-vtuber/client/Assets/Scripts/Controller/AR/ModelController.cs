@@ -1,4 +1,5 @@
-﻿using Data;
+﻿#if TRILIB_CORE_INSTALLED
+using Data;
 using DG.Tweening;
 using Extension;
 using Framework;
@@ -75,3 +76,4 @@ namespace Controller.AR
         }
     }
 }
+#endif
