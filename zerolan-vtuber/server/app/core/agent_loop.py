@@ -38,6 +38,12 @@ class AgentLoop:
         self._provider = provider
         self._registry = registry
 
+    def rebuild_provider(
+        self, *, base_url: str | None = None, api_key: str | None = None, model: str | None = None
+    ) -> None:
+        """§7 热替换：重建 LLM provider（Router 重新构建），后续对话生效。"""
+        self._provider.rebuild(base_url=base_url, api_key=api_key, model=model)
+
     async def run(self, messages: list[dict[str, Any]]) -> AgentResult:
         """输入初始 messages，最多 3 轮工具调用后返回最终文本。"""
         result = AgentResult()

@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 
 from loguru import logger
 
+from app.config import LLMConfig
 from app.core.agent_loop import AgentLoop
 from app.core.history import History
 from app.providers.asr import create_asr_provider
@@ -116,9 +117,20 @@ class Orchestrator:
             await self._output_callback(session_id, evt)
 
     async def hot_swap(
-        self, asr_config: ASRSlotConfig | None = None, tts_config: TTSSlotConfig | None = None
+        self,
+        *,
+        llm_config: LLMConfig | None = None,
+        asr_config: ASRSlotConfig | None = None,
+        tts_config: TTSSlotConfig | None = None,
     ) -> None:
-        """§7 热替换：重建 ASR/TTS 实例，无重启。"""
+        """§7 热替换：LLM rebuild + ASR/TTS 实例重建，无重启。"""
+        if llm_config is not None:
+            self._agent_loop.rebuild_provider(
+                base_url=llm_config.base_url,
+                api_key=llm_config.api_key,
+                model=llm_config.model,
+            )
+            logger.info("LLM provider hot-swapped: model={}", llm_config.model)
         if asr_config is not None:
             self._asr_config = asr_config
             self._asr = create_asr_provider(asr_config)
