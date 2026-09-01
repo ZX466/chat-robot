@@ -1,5 +1,7 @@
 # .开头目录全部排除（含 .orca，纯本地产物不入库）
 .*/
+# 例外：团结云开发（DevSecOps）工作流目录需入库
+!/.workflows/
 
 # Python
 __pycache__/
@@ -22,3 +24,18 @@ config.yaml
 dist/
 build/
 node_modules/
+
+# Unity（client 工程）
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+MemoryCaptures/
+*.csproj
+*.sln
+*.vcxproj
+*.vcxproj.filters
+.vs/
