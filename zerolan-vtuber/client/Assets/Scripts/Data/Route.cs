@@ -17,5 +17,6 @@
         public const string ShowUserTextInput = "show_user_text_input";
         public const string AddHistory = "add_history";
         public const string ShowMenu = "show_menu";
+        public const string UpdateProviderConfig = "update_provider_config";
     }
 }
