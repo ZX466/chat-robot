@@ -10,6 +10,7 @@ using JetBrains.Annotations;
 using Live2D.Cubism.Core;
 using Live2D.Cubism.Rendering;
 using Unity.VisualScripting;
+using UI;
 using UnityEngine;
 using UnityEngine.Assertions;
 using Util;
