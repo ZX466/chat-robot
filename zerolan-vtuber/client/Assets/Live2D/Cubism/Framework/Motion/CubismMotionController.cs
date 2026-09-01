@@ -25,32 +25,15 @@ namespace Live2D.Cubism.Framework.Motion
         #region Action
 
         /// <summary>
-        /// Action animation start handler.
-        /// </summary>
-        [SerializeField]
-        public Action<int> AnimationBeginHandler;
-
-        /// <summary>
         /// Action animation end handler.
         /// </summary>
         [SerializeField]
-        public Action<int> AnimationEndHandler;
+        public Action<float> AnimationEndHandler;
 
         /// <summary>
         /// Action OnAnimationEnd.
         /// </summary>
-        private void OnAnimationBegin(int layerIndex, int instanceId)
-        {
-            if (AnimationBeginHandler != null)
-            {
-                AnimationBeginHandler(instanceId);
-            }
-        }
-
-        /// <summary>
-        /// Action OnAnimationEnd.
-        /// </summary>
-        private void OnAnimationEnd(int layerIndex, int instanceId)
+        private void OnAnimationEnd(int layerIndex, float instanceId)
         {
             _motionPriorities[layerIndex] = CubismMotionPriority.PriorityNone;
 
@@ -324,7 +307,6 @@ namespace Live2D.Cubism.Framework.Motion
             for(var i = 0; i < LayerCount; ++i)
             {
                 _motionLayers[i] = CubismMotionLayer.CreateCubismMotionLayer(_playableGrap, _cubismFadeMotionList, i);
-                _motionLayers[i].AnimationBeginHandler += OnAnimationBegin;
                 _motionLayers[i].AnimationEndHandler += OnAnimationEnd;
                 _layerMixer.ConnectInput(i, _motionLayers[i].PlayableOutput, 0);
                 _layerMixer.SetInputWeight(i, 1.0f);

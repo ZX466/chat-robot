@@ -24,12 +24,7 @@ namespace Live2D.Cubism.Framework.Motion
         /// <summary>
         /// Action animation end handler.
         /// </summary>
-        public Action<int, int> AnimationBeginHandler;
-
-        /// <summary>
-        /// Action animation end handler.
-        /// </summary>
-        public Action<int, int> AnimationEndHandler;
+        public Action<int, float> AnimationEndHandler;
 
         #endregion
 
@@ -228,9 +223,6 @@ namespace Live2D.Cubism.Framework.Motion
                               : ret.StartTime + ret.Motion.MotionLength / speed;
                 ret.IsLooping = isLooping;
                 ret.Weight = 0.0f;
-                ret.InstanceId = instanceId;
-                ret.IsAnimationEndEventInvoked = false;
-                AnimationBeginHandler(_layerIndex, instanceId);
 
                 break;
             }
@@ -294,7 +286,6 @@ namespace Live2D.Cubism.Framework.Motion
                     motion.StartTime += motion.Motion.MotionLength;
                 }
 
-                motion.IsLooping = false;
 
                 _playingMotions[_playingMotions.Count - 1] = motion;
             }
@@ -375,41 +366,27 @@ namespace Live2D.Cubism.Framework.Motion
 
         public void Update()
         {
-            var isFinished = true;
-            for (var i = 0; i < _playingMotions.Count; i++)
+            // Fail silently...
+            if (AnimationEndHandler == null || _playingMotions.Count != 1 || _isFinished
+             || _motionState.ClipPlayable.GetDuration() == double.MaxValue || Time.time <= _playingMotions[0].EndTime)
             {
-                var playingMotion = _playingMotions[i];
-                if (playingMotion.IsLooping)
+                return;
+            }
+
+            _isFinished = true;
+            var instanceId = -1;
+            var events = _motionState.Clip.events;
+            for (var i = 0; i < events.Length; ++i)
+            {
+                if (events[i].functionName != "InstanceId")
                 {
-                    isFinished = false;
                     continue;
                 }
 
-                if (playingMotion.IsAnimationEndEventInvoked)
-                {
-                    continue;
-                }
-
-                if (Time.time > playingMotion.EndTime)
-                {
-                    playingMotion.IsAnimationEndEventInvoked = true;
-                    _playingMotions[i] = playingMotion;
-                    if (playingMotion.InstanceId.HasValue)
-                    {
-                        var instanceId = _playingMotions[i].InstanceId.Value;
-                        AnimationEndHandler?.Invoke(_layerIndex, instanceId);
-                    }
-                }
-                else
-                {
-                    isFinished = false;
-                }
+                instanceId = events[i].intParameter;
             }
 
-            if (isFinished)
-            {
-                _isFinished = true;
-            }
+            AnimationEndHandler(_layerIndex, instanceId);
         }
     }
 }

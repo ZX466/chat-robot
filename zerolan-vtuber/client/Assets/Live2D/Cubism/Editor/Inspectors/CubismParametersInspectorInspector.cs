@@ -9,9 +9,7 @@
 using Live2D.Cubism.Core;
 using Live2D.Cubism.Framework;
 using UnityEditor;
-using UnityEditor.UIElements;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 
 namespace Live2D.Cubism.Editor.Inspectors
@@ -24,191 +22,122 @@ namespace Live2D.Cubism.Editor.Inspectors
     {
         #region Editor
 
-        private struct Element
+        /// <summary>
+        /// Draws the inspector.
+        /// </summary>
+        public override void OnInspectorGUI()
         {
-            public FloatField field;
-            public Slider slider;
-
-            public Element(FloatField field, Slider slider)
+            // Lazily initialize.
+            if (!IsInitialized)
             {
-                this.field = field;
-                this.slider = slider;
+                Initialize();
             }
-        }
 
-        private VisualElement _visualElement;
-        private Button _button;
-        private Element[] _elements;
 
-        public override VisualElement CreateInspectorGUI()
-        {
-            var target = (CubismParametersInspector)this.target;
-            target.Refresh();
+            // Show parameters.
+            var didParametersChange = false;
 
-            _visualElement = new VisualElement();
-            if (target.Model != null)
+
+            for (var i = 0; i < Parameters.Length; i++)
             {
-                var parameters = target.Model.Parameters;
-                _elements = new Element[parameters.Length];
-                for (var i = 0; i < parameters.Length; i++)
+                EditorGUI.BeginChangeCheck();
+
+                var name = (string.IsNullOrEmpty(ParametersNameFromJson[i]))
+                    ? Parameters[i].Id
+                    : ParametersNameFromJson[i];
+
+                Parameters[i].Value = EditorGUILayout.Slider(
+                    name,
+                    Parameters[i].Value,
+                    Parameters[i].MinimumValue,
+                    Parameters[i].MaximumValue
+                    );
+
+
+                if (EditorGUI.EndChangeCheck())
                 {
-                    var parameter = parameters[i];
-                    var displayInfoParameterName = parameter.GetComponent<CubismDisplayInfoParameterName>();
-                    var displayName = displayInfoParameterName != null
-                        ? (string.IsNullOrEmpty(displayInfoParameterName.DisplayName)
-                            ? displayInfoParameterName.Name
-                            : displayInfoParameterName.DisplayName)
-                        : parameter.Id;
+                    EditorUtility.SetDirty(Parameters[i]);
 
-                    var field = new FloatField() { value = parameter.Value };
 
-                    field.SetEnabled(!Application.isPlaying);
-                    var slider = new Slider(displayName, parameter.MinimumValue, parameter.MaximumValue)
-                    {
-                        value = parameter.Value,
-                        userData = this
-                    };
-                    slider.RegisterCallback<MouseCaptureEvent, int>(OnMouseCapture, i);
-                    slider.RegisterCallback<MouseCaptureOutEvent, int>(OnMouseCaptureOut, i);
-                    slider.RegisterCallback<ChangeEvent<float>, int>(OnChangeEvent, i);
-                    field.style.flexDirection = new StyleEnum<FlexDirection>(FlexDirection.Row);
-                    field.style.flexBasis = new StyleLength(new Length(10.0f, LengthUnit.Percent));
-                    field.style.maxWidth = new StyleLength(new Length(50.0f, LengthUnit.Pixel));
-                    field.style.minWidth = new StyleLength(new Length(30.0f, LengthUnit.Pixel));
-                    _elements[i] = new Element(field, slider);
-                    slider.Add(field);
-                    _visualElement.Add(slider);
-                }
-                _button = new Button(() =>
-                {
-                    var target = this.target as CubismParametersInspector;
-                    if (target == null)
-                    {
-                        return;
-                    }
-                    for (var i = 0; i < target.Model.Parameters.Length; i++)
-                    {
-                        var parameter = target.Model.Parameters[i];
-                        parameter.OverrideValue(parameter.DefaultValue);
-                        _elements[i].slider.value = parameter.DefaultValue;
-                        _elements[i].field.value = parameter.DefaultValue;
-                        EditorUtility.SetDirty(parameter);
-                    }
-
-                    Undo.RecordObjects(target.Model.Parameters, "Change Parameter Values");
-                    target.Model.ForceUpdateNow();
-                })
-                { text = "Reset" };
-                _button.SetEnabled(!Application.isPlaying);
-                _visualElement.Add(_button);
-            }
-            return _visualElement;
-        }
-
-        private void OnEnable()
-        {
-            var target = (CubismParametersInspector)this.target;
-            target.OnChangedValues += UpdateValues;
-        }
-
-        private void OnDisable()
-        {
-            var target = (CubismParametersInspector)this.target;
-            target.OnChangedValues -= UpdateValues;
-        }
-
-        private void UpdateValues(CubismInspectorAbstract sender)
-        {
-            if (_elements == null)
-            {
-                return;
-            }
-
-            if (sender.Model == null)
-            {
-                Debug.LogError("sender model is null.");
-                return;
-            }
-            var flags = sender.OverrideFlags;
-            var parameters = sender.Model.Parameters;
-            if (parameters == null)
-            {
-                Debug.LogError("parameters is null.");
-                return;
-            }
-            if (_elements.Length != parameters.Length)
-            {
-                Debug.LogError("parameters count mismatch.");
-                return;
-            }
-            for (var i = 0; i < _elements.Length; i++)
-            {
-                if (!flags[i])
-                {
-                    var value = parameters[i].Value;
-                    _elements[i].field.value = value;
-                    _elements[i].slider.value = value;
+                    didParametersChange = true;
                 }
             }
-        }
 
-        private static void OnMouseCapture(MouseCaptureEvent ev, int index)
-        {
-            var slider = ev.currentTarget as Slider;
-            if (slider == null)
-            {
-                return;
-            }
-            var data = slider.userData as CubismParametersInspectorInspector;
-            if (data == null)
-            {
-                return;
-            }
-            var target = (CubismParametersInspector)data.target;
-            target.OverrideFlags[index] = true;
-        }
 
-        private static void OnMouseCaptureOut(MouseCaptureOutEvent ev, int index)
-        {
-            var slider = ev.currentTarget as Slider;
-            if (slider == null)
-            {
-                return;
-            }
-            var data = slider.userData as CubismParametersInspectorInspector;
-            if (data == null)
-            {
-                return;
-            }
-            var target = (CubismParametersInspector)data.target;
-            target.OverrideFlags[index] = false;
-        }
+            // Show reset button.
+            var resetPosition = EditorGUILayout.GetControlRect();
 
-        private static void OnChangeEvent(ChangeEvent<float> ev, int index)
-        {
-            var slider = ev.target as Slider;
-            if (slider == null)
+
+            resetPosition.width *= 0.25f;
+            resetPosition.x += (resetPosition.width*3f);
+
+
+            if (GUI.Button(resetPosition, "Reset"))
             {
-                return;
+                foreach (var parameter in Parameters)
+                {
+                    parameter.Value = parameter.DefaultValue;
+
+
+                    EditorUtility.SetDirty(parameter);
+                }
+
+
+                didParametersChange = true;
             }
-            var data = slider.userData as CubismParametersInspectorInspector;
-            if (data == null)
+
+
+            if (didParametersChange)
             {
-                return;
-            }
-            var target = (CubismParametersInspector)data.target;
-            data._elements[index].field.value = ev.newValue;
-            target.OverrideValues[index] = ev.newValue;
-            if (!Application.isPlaying)
-            {
-                var parameter = target.Model.Parameters[index];
-                Undo.RecordObject(parameter, "Change Parameter Value");
-                parameter.OverrideValue(ev.newValue);
-                target.Model.ForceUpdateNow();
-                parameter.OverrideValue(ev.newValue);
+                (target as Component)
+                    .FindCubismModel()
+                    .ForceUpdateNow();
             }
         }
 
         #endregion
+
+        /// <summary>
+        /// <see cref="CubismParameter"/>s cache.
+        /// </summary>
+        private CubismParameter[] Parameters { get; set; }
+
+        /// <summary>
+        /// Array of <see cref="CubismDisplayInfoParameterName.Name"/> obtained from <see cref="CubismDisplayInfoParameterName"/>s.
+        /// </summary>
+        private string[] ParametersNameFromJson { get; set; }
+
+        /// <summary>
+        /// Gets whether <see langword="this"/> is initialized.
+        /// </summary>
+        private bool IsInitialized
+        {
+            get
+            {
+                return Parameters != null;
+            }
+        }
+
+
+        /// <summary>
+        /// Initializes <see langword="this"/>.
+        /// </summary>
+        private void Initialize()
+        {
+            Parameters = (target as Component)
+                .FindCubismModel(true)
+                .Parameters;
+
+            //Initializing the property of `ParametersNameFromJson `.
+            ParametersNameFromJson = new string[Parameters.Length];
+
+            for (var i = 0; i < Parameters.Length; i++)
+            {
+                var displayInfoParameterName = Parameters[i].GetComponent<CubismDisplayInfoParameterName>();
+                ParametersNameFromJson[i] = displayInfoParameterName != null
+                    ? (string.IsNullOrEmpty(displayInfoParameterName.DisplayName) ? displayInfoParameterName.Name : displayInfoParameterName.DisplayName)
+                    : string.Empty;
+            }
+        }
     }
 }

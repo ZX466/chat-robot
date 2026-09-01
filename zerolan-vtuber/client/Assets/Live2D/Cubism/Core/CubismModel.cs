@@ -6,12 +6,9 @@
  */
 
 
-using Live2D.Cubism.Core.Unmanaged;
 using Live2D.Cubism.Framework;
 using System;
 using UnityEngine;
-
-
 #if UNITY_2019_3_OR_NEWER
 using UnityEngine.LowLevel;
 using UnityEngine.PlayerLoop;
@@ -90,30 +87,6 @@ namespace Live2D.Cubism.Core
         }
 
         /// <summary>
-        /// Resets non-serialized fields of a <see cref="CubismModel"/>.
-        /// </summary>
-        /// <remarks>
-        /// Call after <c>PrefabUtility.SaveAsPrefabAsset</c> to clear stale
-        /// component references that may have been cached by <see cref="OnValidate"/>
-        /// during the prefab replacement.
-        /// </remarks>
-        /// <param name="model">Target Cubism model.</param>
-        public static void ResetNonSerializedFields(CubismModel model)
-        {
-            if (model.TaskableModel != null)
-            {
-                model.TaskableModel.ReleaseUnmanaged();
-                model.TaskableModel = null;
-            }
-
-            model._parameters = null;
-            model._parts = null;
-            model._drawables = null;
-            model._offscreens = null;
-            model._canvasInformation = null;
-        }
-
-        /// <summary>
         /// <see cref="Moc"/> backing field.
         /// </summary>
         [SerializeField, HideInInspector]
@@ -142,7 +115,7 @@ namespace Live2D.Cubism.Core
         private CubismParameter[] _parameters;
 
         /// <summary>
-        /// Parameters of model.
+        /// Drawables of model.
         /// </summary>
         public CubismParameter[] Parameters
         {
@@ -232,68 +205,9 @@ namespace Live2D.Cubism.Core
         }
 
         /// <summary>
-        /// <see cref="Offscreens"/> backing field.
-        /// </summary>
-        [NonSerialized]
-        private CubismOffscreen[] _offscreens;
-
-        /// <summary>
-        /// Offscreens of model.
-        /// </summary>
-        public CubismOffscreen[] Offscreens
-        {
-            get
-            {
-                if (_offscreens == null)
-                {
-                    Revive();
-                }
-
-                return _offscreens;
-            }
-            private set { _offscreens = value; }
-        }
-
-        /// <summary>
-        /// All draw objects render order.
-        /// </summary>
-        public CubismUnmanagedIntArrayView AllDrawObjectsRenderOrder
-        {
-            get
-            {
-                return TaskableModel.UnmanagedModel.AllDrawObjectRenderOrders;
-            }
-        }
-
-        /// <summary>
         /// Parameter store cache.
         /// </summary>
         CubismParameterStore _parameterStore;
-
-        /// <summary>
-        /// Whether parameter repetition is performed for the entire model.
-        /// </summary>
-        [SerializeField]
-        private bool _isOverriddenParameterRepeat = true;
-
-
-        /// <summary>
-        /// Checks whether parameter repetition is performed for the entire model.
-        /// </summary>
-        /// <returns>True if parameter repetition is performed for the entire model; otherwise returns false.</returns>
-        public bool GetOverrideFlagForModelParameterRepeat()
-        {
-            return _isOverriddenParameterRepeat;
-        }
-
-        /// <summary>
-        /// Sets whether parameter repetition is performed for the entire model.
-        /// </summary>
-        /// <param name="isRepeat">Use true to perform parameter repetition for the entire model, or false to not perform it.</param>
-        public void SetOverrideFlagForModelParameterRepeat(bool isRepeat)
-        {
-            _isOverriddenParameterRepeat = isRepeat;
-        }
 
         /// <summary>
         /// True if instance is revived.
@@ -332,10 +246,11 @@ namespace Live2D.Cubism.Core
         /// </summary>
         private int LastTick { get; set; }
 
+
         /// <summary>
         /// Revives instance.
         /// </summary>
-        internal void Revive()
+        private void Revive()
         {
             // Return if already revive.
             if (IsRevived)
@@ -351,7 +266,26 @@ namespace Live2D.Cubism.Core
             }
 
 
-            Reset(Moc);
+            // Revive unmanaged model.
+            TaskableModel = new CubismTaskableModel(Moc);
+
+            if (TaskableModel == null || TaskableModel.UnmanagedModel == null)
+            {
+                return;
+            }
+
+            // Revive proxies.
+            Parameters = GetComponentsInChildren<CubismParameter>();
+            Parts = GetComponentsInChildren<CubismPart>();
+            Drawables = GetComponentsInChildren<CubismDrawable>();
+
+            Parameters.Revive(TaskableModel.UnmanagedModel);
+            Parts.Revive(TaskableModel.UnmanagedModel);
+            Drawables.Revive(TaskableModel.UnmanagedModel);
+
+            CanvasInformation = new CubismCanvasInformation(TaskableModel.UnmanagedModel);
+
+            _parameterStore = GetComponent<CubismParameterStore>();
         }
 
         /// <summary>
@@ -369,155 +303,22 @@ namespace Live2D.Cubism.Core
                 return;
             }
 
-            Parameters = GetComponentsInChildren<CubismParameter>();
-            if (Parameters.Length < 1 && (transform.Find("Parameters") == null))
-            {
-                // Create and initialize proxies.
-                var parameters = CubismParameter.CreateParameters(TaskableModel.UnmanagedModel);
-                parameters.transform.SetParent(transform);
-                Parameters = parameters.GetComponentsInChildren<CubismParameter>();
-            }
-            else
-            {
-                // Filter stale entries whose UnmanagedIndex exceeds the new Moc count.
-                var unmanagedParameterCount = TaskableModel.UnmanagedModel.Parameters.Count;
-                if (Parameters.Length > unmanagedParameterCount)
-                {
-                    var filtered = new CubismParameter[unmanagedParameterCount];
-                    var n = 0;
-                    for (var i = 0; i < Parameters.Length; i++)
-                    {
-                        if (Parameters[i].UnmanagedIndex < unmanagedParameterCount)
-                        {
-                            filtered[n++] = Parameters[i];
-                        }
-                    }
-
-                    if (n < unmanagedParameterCount)
-                    {
-                        Array.Resize(ref filtered, n);
-                    }
-
-                    Parameters = filtered;
-                }
-
-                Parameters.Revive(TaskableModel.UnmanagedModel);
-            }
+            // Create and initialize proxies.
+            var parameters = CubismParameter.CreateParameters(TaskableModel.UnmanagedModel);
+            var parts = CubismPart.CreateParts(TaskableModel.UnmanagedModel);
+            var drawables = CubismDrawable.CreateDrawables(TaskableModel.UnmanagedModel);
 
 
-            Parts = GetComponentsInChildren<CubismPart>();
-            if (Parts.Length < 1 && (transform.Find("Parts") == null))
-            {
-                // Create and initialize proxies.
-                var parts = CubismPart.CreateParts(TaskableModel.UnmanagedModel);
-                parts.transform.SetParent(transform);
-                Parts = parts.GetComponentsInChildren<CubismPart>();
-            }
-            else
-            {
-                // Filter stale entries whose UnmanagedIndex exceeds the new Moc count.
-                var unmanagedPartCount = TaskableModel.UnmanagedModel.Parts.Count;
-                if (Parts.Length > unmanagedPartCount)
-                {
-                    var filtered = new CubismPart[unmanagedPartCount];
-                    var n = 0;
-                    for (var i = 0; i < Parts.Length; i++)
-                    {
-                        if (Parts[i].UnmanagedIndex < unmanagedPartCount)
-                        {
-                            filtered[n++] = Parts[i];
-                        }
-                    }
-
-                    if (n < unmanagedPartCount)
-                    {
-                         Array.Resize(ref filtered, n);
-                    }
-
-                    Parts = filtered;
-                }
-                Parts.Revive(TaskableModel.UnmanagedModel);
-            }
+            parameters.transform.SetParent(transform);
+            parts.transform.SetParent(transform);
+            drawables.transform.SetParent(transform);
 
 
-            Drawables = GetComponentsInChildren<CubismDrawable>();
-            if (Drawables.Length < 1 && (transform.Find("Drawables") == null))
-            {
-                // Create and initialize proxies.
-                var drawables = CubismDrawable.CreateDrawables(TaskableModel.UnmanagedModel);
-                drawables.transform.SetParent(transform);
-                Drawables = drawables.GetComponentsInChildren<CubismDrawable>();
-            }
-            else
-            {
-                // Filter stale entries whose UnmanagedIndex exceeds the new Moc count.
-                var unmanagedDrawableCount = TaskableModel.UnmanagedModel.Drawables.Count;
-                if (Drawables.Length > unmanagedDrawableCount)
-                {
-                    var filtered = new CubismDrawable[unmanagedDrawableCount];
-                    var n = 0;
-                    for (var i = 0; i < Drawables.Length; i++)
-                    {
-                        if (Drawables[i].UnmanagedIndex < unmanagedDrawableCount)
-                        {
-                            filtered[n++] = Drawables[i];
-                        }
-                    }
-
-                    if (n < unmanagedDrawableCount)
-                    {
-                        Array.Resize(ref filtered, n);
-                    }
-
-                    Drawables = filtered;
-                }
-
-                Drawables.Revive(TaskableModel.UnmanagedModel);
-            }
-
-            if (0 < CubismCoreDll.GetOffscreenCount(TaskableModel.UnmanagedModel.Ptr))
-            {
-                Offscreens = GetComponentsInChildren<CubismOffscreen>();
-                if (Offscreens.Length < 1 && (transform.Find("Offscreens") == null))
-                {
-                    // Create and initialize proxies.
-                    var offscreens = CubismOffscreen.CreateOffscreens(TaskableModel.UnmanagedModel);
-                    offscreens.transform.SetParent(transform);
-                    Offscreens = offscreens.GetComponentsInChildren<CubismOffscreen>();
-                }
-                else
-                {
-                    // Filter stale entries whose UnmanagedIndex exceeds the new Moc count.
-                    var unmanagedOffscreenCount = TaskableModel.UnmanagedModel.Offscreens.Count;
-                    if (Offscreens.Length > unmanagedOffscreenCount)
-                    {
-                        var filtered = new CubismOffscreen[unmanagedOffscreenCount];
-                        var n = 0;
-                        for (var i = 0; i < Offscreens.Length; i++)
-                        {
-                            if (Offscreens[i].UnmanagedIndex < unmanagedOffscreenCount)
-                            {
-                                filtered[n++] = Offscreens[i];
-                            }
-                        }
-
-                        if (n < unmanagedOffscreenCount)
-                        {
-                            Array.Resize(ref filtered, n);
-                        }
-
-                        Offscreens = filtered;
-                    }
-
-                    Offscreens.Revive(TaskableModel.UnmanagedModel);
-                }
-            }
+            Parameters = parameters.GetComponentsInChildren<CubismParameter>();
+            Parts = parts.GetComponentsInChildren<CubismPart>();
+            Drawables = drawables.GetComponentsInChildren<CubismDrawable>();
 
             CanvasInformation = new CubismCanvasInformation(TaskableModel.UnmanagedModel);
-
-            RefreshParameterStore();
-
-            SetOverrideFlagForModelParameterRepeat(_isOverriddenParameterRepeat);
         }
 
         /// <summary>
@@ -536,26 +337,6 @@ namespace Live2D.Cubism.Core
 #else
             OnRenderObject();
 #endif
-        }
-
-        /// <summary>
-        /// パラメータストアを最新の情報に更新する。
-        /// </summary>
-        public void RefreshParameterStore()
-        {
-            // CubismParameterStore を取得する。
-            _parameterStore = GetComponent<CubismParameterStore>();
-
-
-            // Return early if empty.
-            if (_parameterStore == null)
-            {
-                return;
-            }
-
-
-            // 最新の情報に更新する。
-            _parameterStore.Refresh();
         }
 
 
@@ -672,16 +453,9 @@ namespace Live2D.Cubism.Core
             TaskableModel.TryReadParameters(Parameters);
 
             // restore last frame parameters value and parts opacity.
-            if (_parameterStore != null)
+            if(_parameterStore != null)
             {
-#if UNITY_EDITOR
-                if (Application.isPlaying)
-                {
-                    _parameterStore.RestoreParameters();
-                }
-#else
                 _parameterStore.RestoreParameters();
-#endif
             }
 
             // Trigger event.

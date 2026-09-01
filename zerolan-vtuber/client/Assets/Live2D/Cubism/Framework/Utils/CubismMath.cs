@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace Live2D.Cubism.Framework.Utils
 {
-    public class CubismMath
+    public class CubismMath : MonoBehaviour
     {
         /// <summary>
         /// Returns the remainder of the division of two numbers.
@@ -31,28 +31,6 @@ namespace Live2D.Cubism.Framework.Utils
 
             // Calculate the remainder of the division.
             return dividend % divisor;
-        }
-
-
-        /// <summary>
-        /// Returns the value clamped within the specified range.
-        /// </summary>
-        /// <param name="val">Value to be checked within the range.</param>
-        /// <param name="min">Minimum value.</param>
-        /// <param name="max">Maximum value.</param>
-        /// <returns>Clamped value within the range.</returns>
-        public static float ClampF(float val, float min, float max)
-        {
-            if (val < min)
-            {
-                return min;
-            }
-            else if (max < val)
-            {
-                return max;
-            }
-
-            return val;
         }
     }
 }

@@ -18,7 +18,7 @@ namespace Live2D.Cubism.Core
     /// <summary>
     /// Wrapper for core logs.
     /// </summary>
-    public class CubismLogging
+    internal static class CubismLogging
     {
         #region Delegates
 
@@ -26,7 +26,7 @@ namespace Live2D.Cubism.Core
         /// Delegate compatible with unmanaged log function.
         /// </summary>
         /// <param name="message">Message to log.</param>
-        public unsafe delegate void UnmanagedLogDelegate(char* message);
+        private unsafe delegate void UnmanagedLogDelegate(char* message);
 
         #endregion
 
@@ -34,20 +34,24 @@ namespace Live2D.Cubism.Core
         /// Delegate to pass to native Api.
         /// </summary>
         // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
-        public static UnmanagedLogDelegate LogDelegate { get; set; }
+        private static UnmanagedLogDelegate LogDelegate { get; set; }
 
         #region Initialization
 
         /// <summary>
         /// Registers delegates.
         /// </summary>
-        public static unsafe void Initialize(UnmanagedLogDelegate logFunctionDelegate)
+        [RuntimeInitializeOnLoadMethod]
+        // ReSharper disable once UnusedMember.Local
+        private static unsafe void Initialize()
         {
-            LogDelegate = logFunctionDelegate;
+            LogDelegate = LogUnmanaged;
+
 
             var logFunction = Marshal.GetFunctionPointerForDelegate(LogDelegate);
 
-            CubismCoreDll.SetLogFunction(logFunction);
+
+            csmSetLogFunction(logFunction);
         }
 
         #endregion
@@ -57,7 +61,7 @@ namespace Live2D.Cubism.Core
         /// </summary>
         /// <param name="message">Message to log.</param>
         [MonoPInvokeCallback(typeof(UnmanagedLogDelegate))]
-        public static unsafe void LogUnmanaged(char* message)
+        private static unsafe void LogUnmanaged(char* message)
         {
             // Marshal message and log it.
             var managedMessage = Marshal.PtrToStringAnsi(new IntPtr(message));
@@ -66,16 +70,11 @@ namespace Live2D.Cubism.Core
             Debug.LogFormat("[Cubism] Core: {0}.", managedMessage);
         }
 
-        /// <summary>
-        /// Example log function.
-        /// </summary>
-        /// <param name="message">Log message.</param>
-        public static unsafe void InvokeLog(string message)
-        {
-            var logFunction = Marshal.GetDelegateForFunctionPointer<UnmanagedLogDelegate>(CubismCoreDll.GetLogFunction());
+        #region Extern C
 
-            var str = Marshal.StringToHGlobalAnsi(message);
-            logFunction.Invoke((char*)str.ToPointer());
-        }
+        [DllImport(CubismCoreDll.DllName)]
+        private static extern void csmSetLogFunction(IntPtr logFunction);
+
+        #endregion
     }
 }

@@ -9,6 +9,7 @@
 using System;
 using Live2D.Cubism.Core;
 using Live2D.Cubism.Rendering;
+using Live2D.Cubism.Rendering.Masking;
 using UnityEngine;
 
 
@@ -58,12 +59,8 @@ namespace Live2D.Cubism.Framework.Physics
 
         public void OnLateUpdate()
         {
-            if (!enabled)
-            {
-                return;
-            }
-
             var deltaTime = Time.deltaTime;
+
 
             // Use fixed delta time if required.
             if (CubismPhysics.UseFixedDeltaTime)
@@ -84,8 +81,14 @@ namespace Live2D.Cubism.Framework.Physics
             Rig.Stabilization();
 
             var renderController = gameObject.GetComponent<CubismRenderController>();
+            var maskController = gameObject.GetComponent<CubismMaskController>();
 
             renderController.OnLateUpdate();
+
+            if (maskController)
+            {
+                maskController.OnLateUpdate();
+            }
         }
 
         /// <summary>

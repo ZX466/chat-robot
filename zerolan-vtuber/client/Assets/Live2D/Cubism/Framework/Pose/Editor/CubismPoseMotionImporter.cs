@@ -87,11 +87,6 @@ namespace Live2D.Cubism.Editor.Importers
                 var directoryPath = Path.GetDirectoryName(assetPath) + "/";
                 var motion3Json = CubismMotion3Json.LoadFrom(jsonString);
 
-                if (motion3Json == null)
-                {
-                    continue;
-                }
-
                 var animationClipPath = directoryPath + motions[i].File.Replace(".motion3.json", ".anim");
                 animationClipPath = animationClipPath.Replace("\\", "/");
 
@@ -101,23 +96,44 @@ namespace Live2D.Cubism.Editor.Importers
                     ? assetList.AssetPaths.IndexOf(animationClipPath)
                     : -1;
 
-                // Get the animation clip created by Motion3JsonImporter
-                var animationClip = (assetListIndex >= 0)
-                    ? (AnimationClip)assetList.Assets[assetListIndex]
-                    : AssetDatabase.LoadAssetAtPath<AnimationClip>(animationClipPath);
+                var oldAnimationClip = (shouldImportAsOriginalWorkflow)
+                    ? (assetListIndex >= 0)
+                        ? (AnimationClip)assetList.Assets[assetListIndex]
+                        : AssetDatabase.LoadAssetAtPath<AnimationClip>(animationClipPath)
+                    : null;
 
-                if (animationClip == null)
+                var newAnimationClip = (oldAnimationClip == null)
+                    ? motion3Json.ToAnimationClip(shouldImportAsOriginalWorkflow, shouldClearAnimationCurves, true, pose3Json)
+                    : motion3Json.ToAnimationClip(oldAnimationClip, shouldImportAsOriginalWorkflow, shouldClearAnimationCurves, true,
+                        pose3Json);
+                newAnimationClip.name = animationName;
+
+                if (assetListIndex < 0)
                 {
-                    Debug.LogWarning($"AnimationClip not found at path: {animationClipPath}. Skipping animation event addition.");
-                    continue;
+                    // Create animation clip.
+                    if (oldAnimationClip == null)
+                    {
+                        AssetDatabase.CreateAsset(newAnimationClip, animationClipPath);
+                        oldAnimationClip = newAnimationClip;
+                    }
+
+                    assetList.Assets.Add(newAnimationClip);
+                    assetList.AssetPaths.Add(animationClipPath);
+                    assetList.IsImporterDirties.Add(false);
+                }
+                // Update animation clip.
+                else
+                {
+                    EditorUtility.CopySerialized(newAnimationClip, oldAnimationClip);
+                    EditorUtility.SetDirty(oldAnimationClip);
+                    assetList.Assets[assetListIndex] = oldAnimationClip;
                 }
 
                 // Add animation event
-                if (animationClip != null)
                 {
-                    var instanceId = animationClip.GetInstanceID();
+                    var instanceId = newAnimationClip.GetInstanceID();
 
-                    var sourceAnimationEvents = AnimationUtility.GetAnimationEvents(animationClip);
+                    var sourceAnimationEvents = AnimationUtility.GetAnimationEvents(newAnimationClip);
                     var index = -1;
 
                     for(var j = 0; j < sourceAnimationEvents.Length; ++j)
@@ -143,7 +159,7 @@ namespace Live2D.Cubism.Editor.Importers
                     sourceAnimationEvents[index].intParameter = instanceId;
                     sourceAnimationEvents[index].messageOptions = SendMessageOptions.DontRequireReceiver;
 
-                    AnimationUtility.SetAnimationEvents(animationClip, sourceAnimationEvents);
+                    AnimationUtility.SetAnimationEvents(newAnimationClip, sourceAnimationEvents);
                 }
 
 
@@ -156,7 +172,7 @@ namespace Live2D.Cubism.Editor.Importers
                     fadeMotion = CubismFadeMotionData.CreateInstance(
                         motion3Json,
                         Path.GetFileName(motions[i].File),
-                        animationClip.length,
+                        newAnimationClip.length,
                         shouldImportAsOriginalWorkflow,
                         true);
 
@@ -221,7 +237,7 @@ namespace Live2D.Cubism.Editor.Importers
                 {
                     var instanceId = 0;
                     var isExistInstanceId = false;
-                    var events = animationClip.events;
+                    var events = newAnimationClip.events;
                     for (var k = 0; k < events.Length; ++k)
                     {
                         if (events[k].functionName != "InstanceId")
@@ -236,7 +252,7 @@ namespace Live2D.Cubism.Editor.Importers
 
                     if (!isExistInstanceId)
                     {
-                        instanceId = animationClip.GetInstanceID();
+                        instanceId = newAnimationClip.GetInstanceID();
                     }
 
                     fadeMotions.MotionInstanceIds[motionIndex] = instanceId;
@@ -244,7 +260,7 @@ namespace Live2D.Cubism.Editor.Importers
                 }
                 else
                 {
-                    var instanceId = animationClip.GetInstanceID();
+                    var instanceId = newAnimationClip.GetInstanceID();
                     motionIndex = fadeMotions.MotionInstanceIds.Length;
 
                     Array.Resize(ref fadeMotions.MotionInstanceIds, motionIndex + 1);

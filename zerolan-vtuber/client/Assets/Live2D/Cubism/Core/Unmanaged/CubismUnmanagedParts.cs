@@ -21,28 +21,23 @@ namespace Live2D.Cubism.Core.Unmanaged
     {
         /// <summary>
         /// Part count.
-        /// </summary>
+        /// </summary>>
         public int Count { get; private set; }
 
         /// <summary>
         /// Part IDs.
-        /// </summary>
+        /// </summary>>
         public string[] Ids { get; private set; }
 
         /// <summary>
         /// Opacity values.
-        /// </summary>
+        /// </summary>>
         public CubismUnmanagedFloatArrayView Opacities { get; private set; }
 
         /// <summary>
         /// Part's parent part indices.
-        /// </summary>
+        /// </summary>>
         public CubismUnmanagedIntArrayView ParentIndices { get; private set; }
-
-        /// <summary>
-        /// Part's offscreen indices. If the part does not use an offscreen, the value is '-1'.
-        /// </summary>
-        public CubismUnmanagedIntArrayView OffscreenIndices { get; private set; }
 
 
 
@@ -73,9 +68,6 @@ namespace Live2D.Cubism.Core.Unmanaged
 
             length = CubismCoreDll.GetPartCount(modelPtr);
             ParentIndices = new CubismUnmanagedIntArrayView(CubismCoreDll.GetPartParentPartIndices(modelPtr), length);
-
-            length = CubismCoreDll.GetPartCount(modelPtr);
-            OffscreenIndices = new CubismUnmanagedIntArrayView(CubismCoreDll.GetPartOffscreenIndices(modelPtr), length);
 
         }
 

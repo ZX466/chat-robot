@@ -10,10 +10,10 @@ using Live2D.Cubism.Core;
 using Live2D.Cubism.Framework;
 using Live2D.Cubism.Framework.Expression;
 using Live2D.Cubism.Framework.Json;
+using Live2D.Cubism.Framework.Motion;
 using Live2D.Cubism.Framework.MotionFade;
-using Live2D.Cubism.Framework.MouthMovement;
 using Live2D.Cubism.Framework.Pose;
-using Live2D.Cubism.Rendering;
+using Live2D.Cubism.Rendering.Masking;
 using System;
 using System.IO;
 using System.Linq;
@@ -167,7 +167,7 @@ namespace Live2D.Cubism.Editor.Importers
 
 
             // Instantiate model source and model.
-            var model = Model3Json.ToModel(CubismImporter.OnPickDrawableMaterial, CubismImporter.OnPickTexture, CubismImporter.OnPickOffscreenMaterial, ShouldImportAsOriginalWorkflow);
+            var model = Model3Json.ToModel(CubismImporter.OnPickMaterial, CubismImporter.OnPickTexture, ShouldImportAsOriginalWorkflow);
 
             if (model == null)
             {
@@ -205,6 +205,16 @@ namespace Live2D.Cubism.Editor.Importers
                     CubismImporter.SendModelTextureImportEvent(this, model, texture);
                 }
 
+                var modelMaskTexture = ScriptableObject.CreateInstance<CubismMaskTexture>();
+                modelMaskTexture.name = model.name + "MaskTexture";
+
+                var filePath = string.Format("{0}/{1}.asset", Path.GetDirectoryName(AssetPath), modelMaskTexture.name);
+
+                if (!File.Exists(filePath))
+                {
+                    AssetDatabase.CreateAsset(modelMaskTexture, filePath);
+                }
+
                 // Create prefab and trigger saving of changes.
 #if UNITY_2018_3_OR_NEWER
                 ModelPrefab = PrefabUtility.SaveAsPrefabAsset(model.gameObject, $"{assetPath}.prefab");
@@ -233,7 +243,6 @@ namespace Live2D.Cubism.Editor.Importers
 
 
                 CopyUserData(source, model);
-
                 Object.DestroyImmediate(source.gameObject, true);
 
 
@@ -246,33 +255,9 @@ namespace Live2D.Cubism.Editor.Importers
                     CubismImporter.SendModelTextureImportEvent(this, model, texture);
                 }
 
-                var renderController = model.gameObject.GetComponent<CubismRenderController>();
-
-                if (renderController)
-                {
-                    // HACK: Re-assign textures to avoid lost references due to Unity prefab optimization.
-                    foreach (var cubismRenderer in renderController.DrawableRenderers)
-                    {
-                        // Reset texture references.
-                        cubismRenderer.MainTexture =
-                            CubismBuiltinPickers.TexturePicker(Model3Json, cubismRenderer.Drawable);
-                    }
-                }
 
                 // Reset moc reference.
                 CubismModel.ResetMocReference(model, MocAsset);
-
-                // Update moc asset before saving prefab to avoid IndexOutOfRangeException
-                // when Inspector loads the prefab and calls Revive() with stale moc data.
-                if (MocAsset != null)
-                {
-                    EditorUtility.CopySerialized(moc, MocAsset);
-
-                    // Revive by force to make instance using the new Moc.
-                    CubismMoc.ResetUnmanagedMoc(MocAsset);
-
-                    EditorUtility.SetDirty(MocAsset);
-                }
 
                 // Keep layer value.
                 model.gameObject.layer = ModelPrefab.layer;
@@ -280,13 +265,6 @@ namespace Live2D.Cubism.Editor.Importers
                 // Replace prefab.
 #if UNITY_2018_3_OR_NEWER
                 ModelPrefab = PrefabUtility.SaveAsPrefabAsset(model.gameObject, $"{assetPath}.prefab");
-
-                // Clear stale non-serialized state cached during prefab replacement.
-                var savedModel = ModelPrefab.FindCubismModel();
-                if (savedModel != null)
-                {
-                    CubismModel.ResetNonSerializedFields(savedModel);
-                }
 #else
                 ModelPrefab = PrefabUtility.ReplacePrefab(model.gameObject, ModelPrefab, ReplacePrefabOptions.ConnectToPrefab);
 #endif
@@ -298,6 +276,20 @@ namespace Live2D.Cubism.Editor.Importers
 
             // Clean up.
             Object.DestroyImmediate(model.gameObject, true);
+
+
+            // Update moc asset.
+            if (MocAsset != null)
+            {
+                EditorUtility.CopySerialized(moc, MocAsset);
+
+
+                // Revive by force to make instance using the new Moc.
+                CubismMoc.ResetUnmanagedMoc(MocAsset);
+
+
+                EditorUtility.SetDirty(MocAsset);
+            }
 
             // Save state and assets.
             if (isImporterDirty)
@@ -334,8 +326,7 @@ namespace Live2D.Cubism.Editor.Importers
                 || sourceComponent.GetType() == typeof(CubismFadeController)
                 || sourceComponent.GetType() == typeof(CubismExpressionController)
                 || sourceComponent.GetType() == typeof(CubismPoseController)
-                || sourceComponent.GetType() == typeof(CubismParameterStore)
-                || sourceComponent.GetType() == typeof(CubismDisplayInfoCombinedParameterInfo))
+                || sourceComponent.GetType() == typeof(CubismParameterStore))
                 {
                     continue;
                 }
@@ -382,33 +373,12 @@ namespace Live2D.Cubism.Editor.Importers
                         continue;
                     }
 
-                    // Skip import-managed components that should not be inherited from the old prefab.
-                    if (sourceComponent.GetType() == typeof(CubismEyeBlinkParameter)
-                    ||  sourceComponent.GetType() == typeof(CubismMouthParameter))
-                    {
-                        continue;
-                    }
 
                     // Copy component.
                     var destinationComponent = destinationT.GetOrAddComponent(sourceComponent.GetType());
-                    if (destinationComponent is CubismDisplayInfoParameterName cdiParameterName && !string.IsNullOrEmpty(cdiParameterName.Name))
-                    {
-                        var name = cdiParameterName.Name;
-                        EditorUtility.CopySerialized(sourceComponent, destinationComponent);
-                        cdiParameterName.Name = name;
-                        EditorUtility.SetDirty(cdiParameterName);
-                    }
-                    else if (destinationComponent is CubismDisplayInfoPartName cdiPartName && !string.IsNullOrEmpty(cdiPartName.Name))
-                    {
-                        var name = cdiPartName.Name;
-                        EditorUtility.CopySerialized(sourceComponent, destinationComponent);
-                        cdiPartName.Name = name;
-                        EditorUtility.SetDirty(cdiPartName);
-                    }
-                    else
-                    {
-                        EditorUtility.CopySerialized(sourceComponent, destinationComponent);
-                    }
+
+
+                    EditorUtility.CopySerialized(sourceComponent, destinationComponent);
                 }
             }
         }
