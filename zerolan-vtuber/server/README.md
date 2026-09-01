@@ -5,7 +5,7 @@
 
 - **LLM**：litellm 统一入口（任意 OpenAI 兼容端点，含豆包 Ark；Router 降级）
 - **ASR/TTS**：自研薄适配（百度 / 火山 BigASR / MiMo），httpx 异步，全局单例连接池
-- **工具**：web_search（Tavily 主、ddgs 降级）+ 60s API 工具组（接入中）
+- **工具**：web_search（Tavily 主、ddgs 降级）+ 60s API 工具组（7 工具 + TTL 缓存）
 - **存储**：SQLite（aiosqlite）仅存聊天历史
 - **并发模型**：asyncio 单事件循环，无后台线程
 
@@ -20,7 +20,7 @@ server/
 │   ├── protocol/          # Zerolan 协议数据模型（与 Route.cs 对齐）
 │   ├── core/              # orchestrator / agent_loop / history / broadcast
 │   ├── providers/         # asr(baidu|volcano) / tts(baidu|mimo) / llm / auth
-│   └── tools/             # ToolRegistry + web_search
+│   └── tools/             # ToolRegistry + web_search + sixty_api
 ├── tests/                 # pytest + respx 契约测试，样本在 tests/fixtures/
 ├── config.example.yaml    # 配置示例（复制为 config.yaml）
 └── .env.example           # 环境变量示例（复制为 .env）
@@ -78,10 +78,15 @@ key 优先级：**config.yaml（UI 保存）> 环境变量（.env）**。
 |---|---|
 | `client_hello`（data 可携 `session_id`） | `server_hello`：`ws_port`/`res_port`/`ws_url`/`http_url` + 三组 provider 掩码 `{provider, masked}`（key 仅掩码回显，绝不明文）；携带 `session_id` 可复用会话，断线重连历史不丢 |
 | 任意 action 携带 `data.text`/`data.content` | 视为用户文本 → orchestrator（LLM+工具）→ 逐句广播 `show_user_text_input`（字幕）与 `play_speech`（data 含 `file_id`、`transcript`、`duration`、`url` 等，URL 指向 HTTP 下载凭据） |
-| `update_provider_config`（data: `llm{base_url,api_key,model}`、`asr`/`tts{vendor,base_url,api_key,model}`） | 校验（URL/必填/vendor）→ 热替换 Provider 实例 → 持久化 config.yaml → 回 ack（code=200）；失败回错误 code 与原因；api_key 永不明文回显 |
+| `update_provider_config`（data: `llm{base_url,api_key,model}`、`asr`/`tts{vendor,base_url,api_key,model}`） | 校验（URL/必填/vendor）→ 三槽热替换：`llm` rebuild（Router 重建）+ `asr`/`tts` 实例重建 → 回 ack（code=200，data 含 `message`）；失败回 400 + 原因（同样在 data.message）；api_key 永不明文回显。注意：热替换**仅内存生效**，不写回 config.yaml |
 | `ping` | `pong`（同字面量心跳） |
 
 非法消息 / 未处理 action / 编排失败 → `remote_error`（code 400/500）。
+
+> Unity 客户端侧的"模型服务"配置界面已落地（§12 白名单：仅 `Route.cs` /
+> `ConfigController.cs` / `ProviderConfigHandler.cs` 三个文件；仓库无 Prefab 资产，
+> 场景侧需在 Unity Editor 中挂接），发送 `update_provider_config` 的入口与
+> ack/掩码回显均在该侧，联调时以本表服务端行为为准。
 
 ## HTTP 端点
 
@@ -94,9 +99,10 @@ key 优先级：**config.yaml（UI 保存）> 环境变量（.env）**。
 ## 测试与质量
 
 ```bash
-uv run pytest            # 全量测试（providers 契约测试 + e2e，均 mock 不联网）
-uv run ruff check .      # lint
-uv run mypy app          # 类型检查（strict）
+uv run pytest                                    # 全量测试（mock 不联网，当前 73 用例）
+uv run pytest --cov=app --cov-fail-under=80      # 覆盖率门禁 ≥80%（当前 86%）
+uv run ruff check .                              # lint
+uv run mypy app                                  # 类型检查（strict）
 ```
 
 ## 安全注意
