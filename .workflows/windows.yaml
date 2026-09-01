@@ -1,0 +1,42 @@
+name: Devops Build
+# 更多有关构建工作流的信息，请参考 https://devops.u3dcloud.cn/help/docs/advanced/yaml
+# 您也可以访问注释中的其它链接来了解更多关于 云构建 action 的使用方法
+
+# 在提交至代码库时触发云构建任务
+on: [push]
+
+jobs:
+  build:
+    name: Build StandaloneWindows64
+    # 为了让工作流可以正常触发，需要指定正确的 runs-on 标签
+    # https://devops.u3dcloud.cn/help/docs/advanced/yaml#%E8%A7%A6%E5%8F%91%E5%B7%A5%E4%BD%9C%E6%B5%81
+    runs-on: windows-server-2022-tuanjie-1.2.0-pc-8c-16g
+    steps:
+      # 从 Unity Devops Version Control 签出项目 https://devops.u3dcloud.cn/help/docs/advanced/action#actionscheckout-plasticscm
+      - name: Check out project repository
+        uses: actions/checkout-plasticscm@v1
+        with:
+          path: tjcloudbuild
+
+      # 检查签出内容
+      - name: List repository content
+        run: ls -l ./tjcloudbuild
+
+      # 构建 https://devops.u3dcloud.cn/help/docs/advanced/action#actionstj-builder
+      - name: Build project
+        uses: actions/tj-builder@v3
+        id: build-action
+        with:
+          targetPlatform: StandaloneWindows64
+          projectPath: ./tjcloudbuild/zerolan-vtuber/client
+
+      # 检查构建结果是否成功生成
+      - name: Check build result
+        run: ls -l ${{ steps.build-action.outputs.buildsPath }}
+
+      # 上传制品 https://devops.u3dcloud.cn/help/docs/advanced/action#actionstj-upload-artifact
+      - name: Upload artifact
+        uses: actions/tj-upload-artifact@v2
+        with:
+          name: Build-${{ steps.build-action.outputs.buildVersion }}
+          path: ${{ steps.build-action.outputs.buildsPath }}
