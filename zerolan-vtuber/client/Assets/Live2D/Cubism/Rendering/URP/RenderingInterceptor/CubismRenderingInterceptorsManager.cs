@@ -6,6 +6,7 @@
  */
 
 
+#if CUBISM_URP
 using System;
 using UnityEngine;
 
@@ -175,3 +176,4 @@ namespace Live2D.Cubism.Rendering.URP.RenderingInterceptor
         }
     }
 }
+#endif

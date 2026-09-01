@@ -6,6 +6,7 @@
  */
 
 
+#if CUBISM_URP
 namespace Live2D.Cubism.Rendering.URP.RenderingInterceptor
 {
     /// <summary>
@@ -26,3 +27,4 @@ namespace Live2D.Cubism.Rendering.URP.RenderingInterceptor
         internal void OnPostRenderingForPass(CubismRenderedEventArgs args);
     }
 }
+#endif
