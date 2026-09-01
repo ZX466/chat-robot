@@ -36,6 +36,8 @@ async def test_missing_access_token_raises(load_fixture):
             await manager.get_token()
 
 
-def test_missing_credentials_raise():
-    with pytest.raises(ValueError):
-        BaiduTokenManager("", "sk")
+async def test_missing_credentials_raise_on_call():
+    """部署宽容：key 空可构造（如仅配 llm 也能起服务），首次取 token 时报错。"""
+    manager = BaiduTokenManager("", "sk")
+    with pytest.raises(BaiduTokenError, match="must be provided"):
+        await manager.get_token()

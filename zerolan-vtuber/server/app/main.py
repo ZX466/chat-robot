@@ -1,8 +1,14 @@
 """FastAPI 入口：挂载 WS 与 HTTP 路由，装配 providers/tools/orchestrator。"""
 
 import asyncio
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+
+# 部署健壮性：litellm 导入时默认尝试联网拉模型价目表（无网环境会静默挂起）。
+# 强制本地价目表回退；如需联网更新可显式设 LITELLM_LOCAL_MODEL_COST_MAP=False。
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+os.environ.setdefault("LITELLM_LOG", "ERROR")
 
 from fastapi import FastAPI, WebSocket
 from loguru import logger
