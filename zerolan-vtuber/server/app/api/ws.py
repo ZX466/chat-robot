@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 
-from app.config import Settings
+from app.config import LLMConfig, Settings
 from app.core.orchestrator import Orchestrator
 from app.protocol.models import ZerolanProtocol
 
@@ -241,16 +241,17 @@ class WSHub:
             await self._send(
                 ws,
                 {
-                    "message": "; ".join(errors),
+                    "message": "Provider config invalid",
                     "action": "update_provider_config",
                     "code": 400,
-                    "data": None,
+                    "data": {"message": "; ".join(errors)},
                 },
             )
             return
-        # 热替换：asr/tts 槽位重建
+        # 热替换：llm rebuild + asr/tts 槽位重建
         try:
             await self._orchestrator.hot_swap(
+                llm_config=_build_llm_config(data.get("llm")),
                 asr_config=_build_asr_config(data.get("asr")),
                 tts_config=_build_tts_config(data.get("tts")),
             )
@@ -259,10 +260,10 @@ class WSHub:
             await self._send(
                 ws,
                 {
-                    "message": f"Provider rebuild failed: {exc}",
+                    "message": "Provider rebuild failed",
                     "action": "update_provider_config",
                     "code": 400,
-                    "data": None,
+                    "data": {"message": f"Provider rebuild failed: {exc}"},
                 },
             )
             return
@@ -272,7 +273,7 @@ class WSHub:
                 "message": "Provider config updated",
                 "action": "update_provider_config",
                 "code": 200,
-                "data": None,
+                "data": {"message": "Provider config updated"},
             },
         )
         logger.info("provider config hot-swapped for session {}", session_id)
@@ -281,6 +282,14 @@ class WSHub:
 def _validate_provider_config(data: Any) -> list[str]:
     """校验 update_provider_config：vendor 合法、URL 合法、必填非空。"""
     errors: list[str] = []
+    llm_cfg = data.get("llm") if isinstance(data, dict) else None
+    if llm_cfg is not None:
+        url = llm_cfg.get("base_url")
+        if url and not str(url).startswith(("http://", "https://")):
+            errors.append("llm.base_url must be http(s) URL")
+        for key in ("api_key", "base_url", "model"):
+            if llm_cfg.get(key) is None:
+                errors.append(f"llm.{key} is required")
     for slot in ("asr", "tts"):
         cfg = data.get(slot) if isinstance(data, dict) else None
         if cfg is None:
@@ -297,9 +306,25 @@ def _validate_provider_config(data: Any) -> list[str]:
     return errors
 
 
+def _build_llm_config(data: Any) -> LLMConfig | None:
+    """构造 LLM 热替换配置（§7 update_provider_config）；槽位未提供返回 None 不重建。"""
+    if not data:
+        return None
+    # 校验层（_validate_provider_config）已保证 model 必填
+    model = str(data["model"])
+    return LLMConfig(
+        base_url=str(data.get("base_url") or None),
+        api_key=str(data.get("api_key") or None),
+        model=model,
+    )
+
+
 def _build_asr_config(data: Any) -> Any:
     from app.providers.config import BaiduASRConfig, VolcanoASRConfig
 
+    data = data or {}
+    if not data:
+        return None
     vendor = data.get("vendor")
     common: dict[str, object] = {
         k: v for k, v in data.items() if k in ("base_url", "api_key", "model") and v is not None
@@ -312,6 +337,9 @@ def _build_asr_config(data: Any) -> Any:
 def _build_tts_config(data: Any) -> Any:
     from app.providers.config import BaiduTTSConfig, MimoTTSConfig
 
+    data = data or {}
+    if not data:
+        return None
     vendor = data.get("vendor")
     common: dict[str, object] = {
         k: v
