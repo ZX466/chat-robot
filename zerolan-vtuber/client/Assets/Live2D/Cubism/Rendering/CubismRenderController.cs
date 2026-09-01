@@ -8,7 +8,9 @@
 
 using Live2D.Cubism.Core;
 using Live2D.Cubism.Framework;
+#if CUBISM_URP
 using Live2D.Cubism.Rendering.URP.RenderingInterceptor;
+#endif
 using System;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -866,11 +868,13 @@ namespace Live2D.Cubism.Rendering
             }
 #endif
 
+#if CUBISM_URP
             if (GetComponent<ICubismRenderingInterceptor>() != null)
             {
                 // Do not register at common controller when a rendering interceptor is attached.
                 return;
             }
+#endif
 
             // Register at common controller.
             CubismRenderControllerGroup.GetInstance().AddRenderController(this);

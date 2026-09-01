@@ -6,6 +6,7 @@
  */
 
 
+#if CUBISM_URP
 using Live2D.Cubism.Core;
 using Live2D.Cubism.Rendering.URP.RenderingInterceptor;
 using System;
@@ -872,3 +873,4 @@ namespace Live2D.Cubism.Rendering.URP
         }
     }
 }
+#endif

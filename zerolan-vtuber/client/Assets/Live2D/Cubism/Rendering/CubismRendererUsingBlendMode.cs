@@ -7,6 +7,7 @@
 
 
 using Live2D.Cubism.Core;
+#if CUBISM_URP
 using Live2D.Cubism.Rendering.URP;
 using Live2D.Cubism.Rendering.Util;
 using UnityEngine;
@@ -917,3 +918,4 @@ namespace Live2D.Cubism.Rendering
         }
     }
 }
+#endif
