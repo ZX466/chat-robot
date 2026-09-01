@@ -1,4 +1,5 @@
-﻿using Cysharp.Threading.Tasks;
+﻿#if TRILIB_CORE_INSTALLED
+using Cysharp.Threading.Tasks;
 using System.IO;
 using System.Linq;
 using Controller.AR;
@@ -95,3 +96,4 @@ namespace Handlers
         }
     }
 }
+#endif
