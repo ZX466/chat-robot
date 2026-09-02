@@ -275,7 +275,8 @@ namespace Web.Api
             FileType fileType = FileType.ZIP,
             bool forceDownload = false)
         {
-            var path = Path.Combine(Application.persistentDataPath, fileId + "." + fileType.ToString().ToLower());
+            var safeName = fileId.Replace(':', '_'); // Windows 文件名不允许 ':'（model:rice → model_rice）
+            var path = Path.Combine(Application.persistentDataPath, safeName + "." + fileType.ToString().ToLower());
             if (forceDownload)
             {
                 if (File.Exists(path))

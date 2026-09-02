@@ -34,6 +34,12 @@ namespace Handlers
         [Inject] private CameraController CameraController { get; set; }
 #endif
 
+        /// <summary>供 ConnectionHandler 在 server_hello 携带 live2d_model 时直接触发（本地调用，不走 WS 回环）。</summary>
+        public void LoadFromServerHello(LoadLive2DModelResponse data)
+        {
+            OnLive2DLoad(data);
+        }
+
         [OnProtocolReceived(Action = Route.LoadLive2DModel)]
         private void OnLive2DLoad(LoadLive2DModelResponse data)
         {
