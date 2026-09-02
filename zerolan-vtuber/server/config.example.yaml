@@ -32,6 +32,8 @@ server:
   ws_host: 127.0.0.1
   ws_port: 8090
   http_port: 8091
+  # Live2D 模型下发：models/rice.zip 存在时 server_hello 通知客户端加载（换模型只换服务端文件）
+  live2d_model: rice
 
 broadcast:
   enabled: false
