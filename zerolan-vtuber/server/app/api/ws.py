@@ -226,6 +226,15 @@ class WSHub:
             client_sid = msg.data.get("session_id")
             if isinstance(client_sid, str) and client_sid:
                 data["session_id"] = client_sid
+        # Live2D 模型下发（§B）：配置了 live2d_model 且 zip 存在时告知客户端拉取
+        if s.server.live2d_model:
+            model_zip = s.server.models_dir / f"{s.server.live2d_model}.zip"
+            if model_zip.exists():
+                data["live2d_model"] = {
+                    "bot_id": "zerolan-vtuber",
+                    "bot_display_name": "Zerolan",
+                    "model_file_id": f"model:{s.server.live2d_model}",
+                }
         await self._send(
             ws,
             {"message": "Server hello!", "action": "server_hello", "code": 200, "data": data},

@@ -56,6 +56,8 @@ class ServerConfig(BaseModel):
     ws_port: int = 8090
     http_port: int = 8091
     audio_dir: Path = PROJECT_DIR / "audio_assets"
+    models_dir: Path = PROJECT_DIR / "models"
+    live2d_model: str | None = None  # models_dir 下的模型名（不含 .zip），非空时 server_hello 下发
 
 
 class BroadcastConfig(BaseModel):
