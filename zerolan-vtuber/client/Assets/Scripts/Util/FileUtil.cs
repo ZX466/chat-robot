@@ -29,7 +29,8 @@ namespace Util
 
         public static string ExtractZipCached(string fileId, string zipFilePath, bool recursive = false)
         {
-            var extractDir = Path.Combine(UnityEngine.Application.persistentDataPath, fileId);
+            var safeId = fileId.Replace(':', '_'); // 与下载缓存一致：Windows 文件名禁 ':'
+            var extractDir = Path.Combine(UnityEngine.Application.persistentDataPath, safeId);
             if (Directory.Exists(extractDir))
             {
                 Debug.LogFormat("Model directory already exists, skipped: {0}", extractDir);

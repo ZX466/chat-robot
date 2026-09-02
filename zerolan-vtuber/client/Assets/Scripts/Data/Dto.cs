@@ -166,7 +166,7 @@ namespace Data
     {
         public int WsPort { get; set; }
         public int ResPort { get; set; }
-
+        public LoadLive2DModelResponse Live2DModel { get; set; }
 
         [JsonConstructor]
         public ServerHello(int wsPort, int resPort)

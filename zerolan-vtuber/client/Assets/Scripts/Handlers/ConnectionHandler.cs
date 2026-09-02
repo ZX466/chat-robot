@@ -29,6 +29,16 @@ namespace Handlers
             var wsUri = _appConfigService.GetWebSocketUri();
             UINetworkController.SetAddressTextValue(NetworkConnectionStatus.Connected, wsUri.ToString());
             UINetworkController.StartPing(wsUri.Host);
+            // 服务端下发 Live2D 模型（换模型只改服务端文件，客户端零打包）
+            if (serverHello.Live2DModel != null &&
+                !string.IsNullOrEmpty(serverHello.Live2DModel.ModelFileId))
+            {
+                var live2d = FindObjectOfType<Handlers.Live2DHandler>();
+                if (live2d != null)
+                {
+                    live2d.LoadFromServerHello(serverHello.Live2DModel);
+                }
+            }
             
 #if VUFORIA_INSTALLED && LIVE2D_SDK_INSTALLED
             CameraController.SwitchToARMode();
