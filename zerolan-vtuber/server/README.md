@@ -60,6 +60,24 @@ llm:
 3. 连接成功:`client_hello` → `server_hello`(回显三组供应商掩码,如 `deepseek/d***`)
 4. 对话:客户端发文本 → 服务端 LLM+工具 → 逐句回 `show_user_text_input`(字幕)+ `play_speech`(TTS 音频下载地址)
 
+## Live2D 模型下发(换模型零打包)
+
+服务端可向客户端下发 Live2D 人物模型——**换模型只需替换服务端文件,不用重新打包 exe**:
+
+```bash
+# ① 放模型:zip 内含 <名字>.model3.json(官方示例 Rice 已内置)
+zerolan-vtuber/models/rice.zip
+
+# ② 改配置:config.yaml
+server:
+  live2d_model: rice        # 模型名 = zip 文件名(不含 .zip);留空/删行 = 不下发
+
+# ③ 重启 server → 客户端连上后自动下载并加载模型
+```
+
+zip 要求:根目录(或一级子目录)含 `*.model3.json` + `.moc3` + 贴图;动作放 `motions/`。
+内置 `models/Rice/` 为 Live2D Cubism 官方免费示例(示例许可),可直接改名替换。
+
 ## 协议摘要
 
 端点 `ws://{host}:{port}/ws`;信封与 Unity `Route.cs` 完全一致:
@@ -70,9 +88,9 @@ llm:
 
 | 客户端发送 | 服务端响应 |
 |---|---|
-| `client_hello` | `server_hello`(端口/URL 回显 + provider 掩码;`data.session_id` 可复用会话,重连历史不丢) |
+| `client_hello` | `server_hello`(端口/URL 回显 + provider 掩码;配置了 `live2d_model` 时附 `live2d_model.model_file_id` 触发客户端加载模型;`data.session_id` 可复用会话,重连历史不丢) |
 | 携带 `data.text` 的消息 | 用户文本 → LLM 编排 → 字幕 + `play_speech` |
-| `update_provider_config` | 校验 → 三槽热替换(llm/asr/tts)→ ack;失败回 400+原因;仅内存生效,不写 config.yaml |
+| `update_provider_config` | 校验 → 热替换(填哪槽换哪槽,llm/asr/tts 可选)→ ack;失败回 400+原因;仅内存生效,不写 config.yaml |
 | `ping` | `pong` |
 
 非法消息/编排失败 → `remote_error`(code 400/500)。
@@ -83,12 +101,13 @@ llm:
 |---|---|---|
 | GET | `/health` | 健康检查 |
 | POST | `/playground/microphone` | multipart:`audio`=WAV + `metadata`=`{"Channels":1,"SampleRate":16000}` → ASR → 编排 |
-| GET | `/resource/file?file_id={id}` | 下载 `play_speech` 下发的音频 |
+| GET | `/resource/file?file_id={id}` | 下载 `play_speech` 下发的音频;`file_id=model:<名字>` 下载 Live2D 模型 zip |
+| GET | `/resource/file?file_id=model:{name}` | Live2D 模型包(`models/{name}.zip`) |
 
 ## 测试与质量
 
 ```bash
-uv run pytest                                    # 全量测试(mock 不联网,当前 73 用例)
+uv run pytest                                    # 全量测试(mock 不联网,当前 76 用例)
 uv run pytest --cov=app --cov-fail-under=80      # 覆盖率门禁 ≥80%(当前 86%)
 uv run ruff check .                              # lint
 uv run mypy app                                  # 类型检查(strict)
@@ -111,6 +130,7 @@ server/
 │   ├── core/              # orchestrator / agent_loop / history / broadcast
 │   ├── providers/         # asr(baidu|volcano) / tts(baidu|mimo) / llm / auth
 │   └── tools/             # ToolRegistry + web_search + sixty_api
+├── models/                # Live2D 模型 zip(live2d_model 下发;Rice 为官方示例)
 ├── tests/                 # pytest + respx 契约测试
 ├── config.example.yaml    # 复制为 config.yaml
 └── .env.example           # 复制为 .env(可选)

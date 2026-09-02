@@ -34,11 +34,22 @@
 ## 首次运行配置
 
 1. 先启动服务端(见 `../server/README.md` 快速部署)
-2. 运行 exe → "设置"界面填服务器地址 `ws://127.0.0.1:8091/ws` → 连接
-3. 连接成功 Toast 回显供应商掩码(如 `deepseek/d***`);"模型服务"分区可运行中热填 LLM/ASR/TTS key(`update_provider_config`,服务端仅内存生效,key 不落盘)
+2. 运行 exe → 点右上角**齿轮**(设置),面板内容:
+
+   | 区块 | 操作 |
+   |---|---|
+   | **目标服务器** | 填 `ws://127.0.0.1:8091/ws` → 点**连接** |
+   | **开关区** | 显示UI / 显示字幕 / 菜单置顶 / 启用AR模式(按需勾选) |
+   | **模型服务(LLM)** | 填 Base URL(`https://api.deepseek.com/v1`)+ API Key(密码型,仅发服务端不落盘)+ Model(`deepseek/deepseek-chat`)→ 点**应用配置**(热替换,无需重启) |
+   | **退出程序** | 关闭应用(或按 `Esc`) |
+
+3. 连接成功:Toast 回显供应商掩码(如 `deepseek/d***`);服务端配了 `live2d_model` 时,**人物模型自动下载加载**(Toast"Live2D加载完毕"后进入桌宠透明模式)
+4. 对话:客户端发文本 → 字幕 + 语音播报
+
+> 换人物模型不用重新打包:替换服务端 `models/*.zip` + 改一行配置即可,见 `../server/README.md`。
 
 ## 已知边界
 
-- `ConfigController` 部分字段引用需在场景 Prefab 中挂接(仓库无 Prefab 资产);缺引用时输入框由代码侧兜底(Password 类型与下拉选项)
+- ASR/TTS 的"模型服务"输入框暂未在场景挂接(只开放 LLM 三项);ASR/TTS 走服务端 `config.yaml` 配置
 - 透明桌宠模式:`Esc` 退出;拖拽窗口移动
 - 若 UI 按钮全部无法点击:检查 `ProjectSettings.asset` 的 `activeInputHandler` 必须为 `2`
