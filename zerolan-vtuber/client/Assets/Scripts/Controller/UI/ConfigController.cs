@@ -25,11 +25,11 @@ namespace Controller.UI
         [SerializeField] private TMP_InputField llmBaseUrlInputField;
         [SerializeField] private TMP_InputField llmApiKeyInputField;
         [SerializeField] private TMP_InputField llmModelInputField;
-        [SerializeField] private TMP_Dropdown asrVendorDropdown;
+        [SerializeField] private TMP_InputField asrVendorInputField;
         [SerializeField] private TMP_InputField asrBaseUrlInputField;
         [SerializeField] private TMP_InputField asrApiKeyInputField;
         [SerializeField] private TMP_InputField asrModelInputField;
-        [SerializeField] private TMP_Dropdown ttsVendorDropdown;
+        [SerializeField] private TMP_InputField ttsVendorInputField;
         [SerializeField] private TMP_InputField ttsBaseUrlInputField;
         [SerializeField] private TMP_InputField ttsApiKeyInputField;
         [SerializeField] private TMP_InputField ttsModelInputField;
@@ -136,9 +136,7 @@ namespace Controller.UI
 
         private void InitializeProviderConfigUi()
         {
-            // 模型服务分区可缺省（场景未挂接时跳过；仓库无 Prefab 资产，代码侧兜底保证
-            // key 输入为密码类型、下拉选项就位）。字段引用齐备才初始化。
-            if (llmApiKeyInputField == null || asrVendorDropdown == null || ttsVendorDropdown == null ||
+            if (llmApiKeyInputField == null || asrVendorInputField == null || ttsVendorInputField == null ||
                 applyProviderConfigButton == null)
             {
                 return;
@@ -154,10 +152,6 @@ namespace Controller.UI
             llmApiKeyInputField.contentType = TMP_InputField.ContentType.Password;
             asrApiKeyInputField.contentType = TMP_InputField.ContentType.Password;
             ttsApiKeyInputField.contentType = TMP_InputField.ContentType.Password;
-            asrVendorDropdown.ClearOptions();
-            asrVendorDropdown.AddOptions(new List<string> { "baidu", "volcano" });
-            ttsVendorDropdown.ClearOptions();
-            ttsVendorDropdown.AddOptions(new List<string> { "baidu", "mimo" });
             applyProviderConfigButton.onClick.AddListener(TryApplyProviderConfig);
         }
 
@@ -167,9 +161,9 @@ namespace Controller.UI
             var payload = new Dictionary<string, object>();
             AddNonEmptySlot(payload, "llm", llmBaseUrlInputField, llmApiKeyInputField, llmModelInputField, null);
             AddNonEmptySlot(payload, "asr", asrBaseUrlInputField, asrApiKeyInputField, asrModelInputField,
-                asrVendorDropdown);
+                asrVendorInputField);
             AddNonEmptySlot(payload, "tts", ttsBaseUrlInputField, ttsApiKeyInputField, ttsModelInputField,
-                ttsVendorDropdown);
+                ttsVendorInputField);
 
             if (payload.Count == 0)
             {
@@ -197,7 +191,7 @@ namespace Controller.UI
 
         private static void AddNonEmptySlot(Dictionary<string, object> payload, string slot,
             TMP_InputField baseUrlField, TMP_InputField apiKeyField, TMP_InputField modelField,
-            TMP_Dropdown vendorDropdown)
+            TMP_InputField vendorField)
         {
             if (baseUrlField == null || apiKeyField == null || modelField == null)
             {
@@ -205,7 +199,7 @@ namespace Controller.UI
             }
 
             var slotData = BuildProviderSlot(baseUrlField.text, apiKeyField.text, modelField.text,
-                vendorDropdown != null ? vendorDropdown.options[vendorDropdown.value].text : null);
+                vendorField != null ? vendorField.text : null);
             var baseUrl = (string)slotData["base_url"];
             var apiKey = (string)slotData["api_key"];
             var model = (string)slotData["model"];
