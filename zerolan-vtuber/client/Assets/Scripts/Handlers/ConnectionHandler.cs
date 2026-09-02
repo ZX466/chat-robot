@@ -1,4 +1,5 @@
 ﻿using Controller;
+using System.Linq;
 using Controller.UI;
 using Cysharp.Threading.Tasks;
 using Data;
@@ -33,7 +34,8 @@ namespace Handlers
             if (serverHello.Live2DModel != null &&
                 !string.IsNullOrEmpty(serverHello.Live2DModel.ModelFileId))
             {
-                var live2d = FindObjectOfType<Handlers.Live2DHandler>();
+                var live2d = Resources.FindObjectsOfTypeAll<Handlers.Live2DHandler>()
+                    .FirstOrDefault(h => h.gameObject.scene.isLoaded);
                 if (live2d != null)
                 {
                     live2d.LoadFromServerHello(serverHello.Live2DModel);

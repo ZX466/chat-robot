@@ -166,6 +166,7 @@ namespace Data
     {
         public int WsPort { get; set; }
         public int ResPort { get; set; }
+        [Newtonsoft.Json.JsonProperty("live2d_model")] // 显式 wire 别名：CustomNamingStrategy 对 "2D" 边界的 snake_case 不确定(kiro 诊断#1)
         public LoadLive2DModelResponse Live2DModel { get; set; }
 
         [JsonConstructor]
