@@ -18,5 +18,6 @@
         public const string AddHistory = "add_history";
         public const string ShowMenu = "show_menu";
         public const string UpdateProviderConfig = "update_provider_config";
+        public const string Chat = "chat";
     }
 }
