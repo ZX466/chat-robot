@@ -34,6 +34,7 @@ namespace Controller.UI
         [SerializeField] private TMP_InputField ttsApiKeyInputField;
         [SerializeField] private TMP_InputField ttsModelInputField;
         [SerializeField] private Button applyProviderConfigButton;
+        [SerializeField] private Button quitButton;
 
         private readonly AppConfigService _appConfigService = AppConfigService.Instance;
 
@@ -45,6 +46,10 @@ namespace Controller.UI
             moveMenuToggle.onValueChanged.AddListener(TrySyncMenuOnTopConfig);
             enableARModeToggle.onValueChanged.AddListener(TrySyncEnableARModeConfig);
             connectButton.onClick.AddListener(TrySyncServerConfig);
+            if (quitButton != null)
+            {
+                quitButton.onClick.AddListener(() => Application.Quit());
+            }
             InitializeProviderConfigUi();
             _appConfigService.LoadConfig().Forget();
         }
@@ -131,7 +136,21 @@ namespace Controller.UI
 
         private void InitializeProviderConfigUi()
         {
-            // 仓库无 Prefab 资产：代码侧兜底保证 key 输入为密码类型、下拉选项就位
+            // 模型服务分区可缺省（场景未挂接时跳过；仓库无 Prefab 资产，代码侧兜底保证
+            // key 输入为密码类型、下拉选项就位）。字段引用齐备才初始化。
+            if (llmApiKeyInputField == null || asrVendorDropdown == null || ttsVendorDropdown == null ||
+                applyProviderConfigButton == null)
+            {
+                return;
+            }
+
+            if (llmBaseUrlInputField == null || llmModelInputField == null ||
+                asrBaseUrlInputField == null || asrApiKeyInputField == null || asrModelInputField == null ||
+                ttsBaseUrlInputField == null || ttsApiKeyInputField == null || ttsModelInputField == null)
+            {
+                return;
+            }
+
             llmApiKeyInputField.contentType = TMP_InputField.ContentType.Password;
             asrApiKeyInputField.contentType = TMP_InputField.ContentType.Password;
             ttsApiKeyInputField.contentType = TMP_InputField.ContentType.Password;
@@ -145,17 +164,18 @@ namespace Controller.UI
         private void TryApplyProviderConfig()
         {
             // §12 约束：api_key 不落盘，仅发送给服务端（key 只存服务端 config.yaml）
-            var payload = new Dictionary<string, object>
+            var payload = new Dictionary<string, object>();
+            AddNonEmptySlot(payload, "llm", llmBaseUrlInputField, llmApiKeyInputField, llmModelInputField, null);
+            AddNonEmptySlot(payload, "asr", asrBaseUrlInputField, asrApiKeyInputField, asrModelInputField,
+                asrVendorDropdown);
+            AddNonEmptySlot(payload, "tts", ttsBaseUrlInputField, ttsApiKeyInputField, ttsModelInputField,
+                ttsVendorDropdown);
+
+            if (payload.Count == 0)
             {
-                ["llm"] = BuildProviderSlot(llmBaseUrlInputField.text, llmApiKeyInputField.text,
-                    llmModelInputField.text),
-                ["asr"] = BuildProviderSlot(asrBaseUrlInputField.text, asrApiKeyInputField.text,
-                    asrModelInputField.text,
-                    asrVendorDropdown.options[asrVendorDropdown.value].text),
-                ["tts"] = BuildProviderSlot(ttsBaseUrlInputField.text, ttsApiKeyInputField.text,
-                    ttsModelInputField.text,
-                    ttsVendorDropdown.options[ttsVendorDropdown.value].text),
-            };
+                ToastLogger.Error("请至少填写一个供应商配置（llm / asr / tts）");
+                return;
+            }
 
             if (!ValidateProviderConfig(payload, out var error))
             {
@@ -172,6 +192,29 @@ namespace Controller.UI
             {
                 Debug.LogException(e);
                 ToastLogger.Error($"提交失败：{e.Message}");
+            }
+        }
+
+        private static void AddNonEmptySlot(Dictionary<string, object> payload, string slot,
+            TMP_InputField baseUrlField, TMP_InputField apiKeyField, TMP_InputField modelField,
+            TMP_Dropdown vendorDropdown)
+        {
+            if (baseUrlField == null || apiKeyField == null || modelField == null)
+            {
+                return;
+            }
+
+            var slotData = BuildProviderSlot(baseUrlField.text, apiKeyField.text, modelField.text,
+                vendorDropdown != null ? vendorDropdown.options[vendorDropdown.value].text : null);
+            var baseUrl = (string)slotData["base_url"];
+            var apiKey = (string)slotData["api_key"];
+            var model = (string)slotData["model"];
+            var vendor = slotData.TryGetValue("vendor", out var v) ? (string)v : string.Empty;
+            var hasContent = baseUrl.Length > 0 || apiKey.Length > 0 || model.Length > 0 ||
+                             (vendor.Length > 0 && apiKey.Length > 0);
+            if (hasContent)
+            {
+                payload[slot] = slotData;
             }
         }
 
@@ -197,10 +240,23 @@ namespace Controller.UI
             error = null;
             foreach (var slot in new[] { "llm", "asr", "tts" })
             {
-                var cfg = (Dictionary<string, object>)payload[slot];
+                if (!payload.TryGetValue(slot, out var raw))
+                {
+                    continue; // 槽位未填写（可缺省）
+                }
+
+                var cfg = (Dictionary<string, object>)raw;
                 var baseUrl = (string)cfg["base_url"];
                 var apiKey = (string)cfg["api_key"];
                 var model = (string)cfg["model"];
+                var vendor = cfg.TryGetValue("vendor", out var v) ? (string)v : null;
+                var wantsVendor = slot == "asr" || slot == "tts";
+                if (string.IsNullOrWhiteSpace(vendor) && wantsVendor)
+                {
+                    error = $"请选择 {slot} 的 vendor";
+                    return false;
+                }
+
                 if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(apiKey) ||
                     string.IsNullOrWhiteSpace(model))
                 {
