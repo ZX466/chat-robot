@@ -17,6 +17,8 @@ from app.core.orchestrator import Orchestrator
 def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settings) -> None:
     audio_dir = settings.server.audio_dir
     audio_dir.mkdir(parents=True, exist_ok=True)
+    models_dir = settings.server.models_dir
+    models_dir.mkdir(parents=True, exist_ok=True)
 
     @app.post("/playground/microphone")
     async def playground_microphone(
@@ -57,8 +59,22 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
 
     @app.get("/resource/file")
     async def resource_file(file_id: str) -> FileResponse:
-        """客户端下载凭据：file_id 即 play_speech 的 file_id（D1 对齐 GetAudioClipAsync）。"""
-        if not file_id.isalnum():
+        """客户端下载凭据：file_id 即 play_speech 的 file_id（D1 对齐 GetAudioClipAsync）。
+
+        file_id 形如 ``model:rice`` 时从 Live2D 模型目录取 zip（Content-Disposition
+        交由客户端按扩展名落盘），其余按音频 WAV 处理。
+        """
+        if file_id.startswith("model:"):
+            model_name = file_id.split(":", 1)[1]
+            if not model_name.isalnum():
+                raise HTTPException(status_code=400, detail={"code": 1, "message": "Invalid model"})
+            path = models_dir / f"{model_name}.zip"
+            if not path.exists():
+                raise HTTPException(
+                    status_code=404, detail={"code": 1, "message": "Model not found"}
+                )
+            return FileResponse(path, media_type="application/zip", filename=path.name)
+        if not file_id or not file_id.replace("_", "").replace("-", "").isalnum():
             raise HTTPException(status_code=400, detail={"code": 1, "message": "Invalid file_id"})
         path = audio_dir / f"{file_id}.wav"
         if not path.exists():
