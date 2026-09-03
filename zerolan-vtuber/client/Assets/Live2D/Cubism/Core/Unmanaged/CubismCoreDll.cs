@@ -271,7 +271,9 @@ namespace Live2D.Cubism.Core.Unmanaged
         /// <summary>
         /// Gets drawable render orders.
         /// </summary>
-        [DllImport(DllName, EntryPoint = "csmGetDrawableRenderOrders")]
+        // 5-r.5 Core DLL 把该导出改名为 csmGetRenderOrders（源码 5-r.2 仍用旧名）；
+        // SDK 源码(5-r.2) + DLL(5-r.5) 混搭下 EntryPoint 需指向 DLL 实际导出名。
+        [DllImport(DllName, EntryPoint = "csmGetRenderOrders")]
         public static extern unsafe int* GetDrawableRenderOrders(IntPtr model);
         /// <summary>
         /// Gets drawable opacities.
