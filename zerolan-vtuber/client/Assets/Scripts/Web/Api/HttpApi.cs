@@ -59,7 +59,7 @@ namespace Web.Api
 
 
         private List<IMultipartFormSection> CreateMultipartForm(string sectionName, byte[] data,
-            string fileName, string contentType)
+            string fileName = null, string contentType = null)
         {
             return new List<IMultipartFormSection>
             {
@@ -137,8 +137,7 @@ namespace Web.Api
                 contentType));
             multipartFormSections.AddRange(CreateMultipartForm(
                 "metadata", Encoding.UTF8.GetBytes(jsonString),
-                "metadata.json",
-                "application/json"));
+                contentType: "application/json"));
 
             using var req = UnityWebRequest.Post(uri, multipartFormSections);
             await req.SendWebRequest();
