@@ -136,8 +136,20 @@ async def test_ws_text_flow_emits_play_speech(tmp_path: Path) -> None:
             },
             [],
         ),
+        # 校验放开：自定义 vendor 字符串放行（未知 vendor 在构建期回 400）
         (
-            {"asr": {"vendor": "nope", "base_url": "http://x", "api_key": "k", "model": "m"}},
+            {
+                "asr": {"vendor": "openai", "base_url": "http://x", "api_key": "k", "model": "m"},
+                "tts": {"vendor": "my-tts", "base_url": "http://x", "api_key": "k", "model": "m"},
+            },
+            [],
+        ),
+        (
+            {"asr": {"vendor": "", "base_url": "http://x", "api_key": "k", "model": "m"}},
+            ["asr.vendor"],
+        ),
+        (
+            {"asr": {"vendor": "  ", "base_url": "http://x", "api_key": "k", "model": "m"}},
             ["asr.vendor"],
         ),
         (
@@ -154,6 +166,56 @@ def test_validate_provider_config(payload: dict[str, Any], expected: list[str]) 
     else:
         for fragment in expected:
             assert any(fragment in e for e in errors), errors
+
+
+@pytest.mark.asyncio
+async def test_update_provider_config_unknown_vendor_returns_400(tmp_path: Path) -> None:
+    """未知 vendor：校验放开后构建期报错，客户端收到 400 + supported 清单。"""
+    orch = await make_orchestrator(tmp_path)
+    hub = WSHub(orch, make_settings(tmp_path))
+    sent: list[dict[str, Any]] = []
+
+    class FakeWS:
+        async def accept(self) -> None:
+            pass
+
+        async def receive_text(self) -> str:
+            raise AssertionError("no more messages")
+
+        async def send_text(self, data: str) -> None:
+            sent.append(json.loads(data))
+
+    fake_ws = FakeWS()
+    hub._connections["s1"] = fake_ws  # noqa: SLF001
+    try:
+        from app.protocol.models import ZerolanProtocol
+
+        await hub._dispatch(  # noqa: SLF001
+            fake_ws,
+            "s1",
+            ZerolanProtocol(
+                action="update_provider_config",
+                message="update provider config",
+                code=0,
+                data={
+                    "asr": {
+                        "vendor": "nope",
+                        "base_url": "http://x",
+                        "api_key": "k",
+                        "model": "m",
+                    },
+                },
+            ).model_dump_json(),
+        )
+        resp = sent[-1]
+        assert resp["action"] == "update_provider_config"
+        assert resp["code"] == 400, resp
+        message = resp["data"]["message"]
+        assert "unsupported vendor: nope" in message
+        assert "baidu/volcano for asr" in message
+        assert "baidu/mimo for tts" in message
+    finally:
+        await orch.close()
 
 
 def test_mask_key() -> None:

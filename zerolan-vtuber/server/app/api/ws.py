@@ -280,6 +280,19 @@ class WSHub:
                 asr_config=_build_asr_config(data.get("asr")),
                 tts_config=_build_tts_config(data.get("tts")),
             )
+        except ValueError as exc:
+            # 校验放开 + 实现收窄：未知 vendor 在构建期给出明确可操作的报错
+            logger.warning("provider rebuild rejected: {}", exc)
+            await self._send(
+                ws,
+                {
+                    "message": "Unsupported vendor",
+                    "action": "update_provider_config",
+                    "code": 400,
+                    "data": {"message": str(exc)},
+                },
+            )
+            return
         except Exception as exc:  # noqa: BLE001 — 热替换失败回错误码
             logger.error("hot swap failed: {}", exc)
             await self._send(
@@ -305,7 +318,11 @@ class WSHub:
 
 
 def _validate_provider_config(data: Any) -> list[str]:
-    """校验 update_provider_config：vendor 合法、URL 合法、必填非空。"""
+    """校验 update_provider_config：vendor 必填非空字符串、URL 合法、必填非空。
+
+    vendor 语义 = "该槽位用哪套协议实现"，自定义字符串校验放行；
+    未知 vendor 在构建期（_build_asr_config/_build_tts_config）回 400 明确报错。
+    """
     errors: list[str] = []
     llm_cfg = data.get("llm") if isinstance(data, dict) else None
     if llm_cfg is not None:
@@ -320,12 +337,12 @@ def _validate_provider_config(data: Any) -> list[str]:
         if cfg is None:
             continue
         vendor = cfg.get("vendor")
-        if vendor not in ("baidu", "volcano", "mimo"):
-            errors.append(f"{slot}.vendor must be one of baidu/volcano/mimo")
+        if not isinstance(vendor, str) or not vendor.strip():
+            errors.append(f"{slot}.vendor is required")
         url = cfg.get("base_url")
         if url and not str(url).startswith(("http://", "https://")):
             errors.append(f"{slot}.base_url must be http(s) URL")
-        for key in ("api_key", "base_url", "model", "vendor"):
+        for key in ("api_key", "base_url", "model"):
             if cfg.get(key) is None:
                 errors.append(f"{slot}.{key} is required")
     return errors
@@ -354,7 +371,11 @@ def _build_asr_config(data: Any) -> Any:
     }
     if vendor == "volcano":
         return VolcanoASRConfig.model_validate(common)
-    return BaiduASRConfig.model_validate(common)
+    if vendor == "baidu":
+        return BaiduASRConfig.model_validate(common)
+    raise ValueError(
+        f"unsupported vendor: {vendor} (supported: baidu/volcano for asr, baidu/mimo for tts)"
+    )
 
 
 def _build_tts_config(data: Any) -> Any:
@@ -371,4 +392,8 @@ def _build_tts_config(data: Any) -> Any:
     }
     if vendor == "mimo":
         return MimoTTSConfig.model_validate(common)
-    return BaiduTTSConfig.model_validate(common)
+    if vendor == "baidu":
+        return BaiduTTSConfig.model_validate(common)
+    raise ValueError(
+        f"unsupported vendor: {vendor} (supported: baidu/volcano for asr, baidu/mimo for tts)"
+    )

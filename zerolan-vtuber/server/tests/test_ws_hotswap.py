@@ -101,6 +101,36 @@ def test_validate_provider_config_accepts_llm() -> None:
     assert _validate_provider_config(payload) == []
 
 
+def test_validate_provider_config_accepts_custom_vendor() -> None:
+    # 校验放开：vendor 只要求非空字符串，自定义取值放行（实现收窄在构建期报错）
+    payload = {
+        "asr": {"vendor": "openai", "base_url": "http://x", "api_key": "k", "model": "m"},
+        "tts": {"vendor": "my-tts", "base_url": "http://x", "api_key": "k", "model": "m"},
+    }
+    assert _validate_provider_config(payload) == []
+
+
+def test_validate_provider_config_rejects_empty_vendor() -> None:
+    errors = _validate_provider_config(
+        {"asr": {"vendor": "", "base_url": "http://x", "api_key": "k", "model": "m"}}
+    )
+    assert any("asr.vendor is required" in e for e in errors)
+
+
+def test_build_asr_tts_unknown_vendor_raises() -> None:
+    # 实现收窄：未知 vendor 构建期抛 ValueError，调用方回 400
+    with pytest.raises(ValueError, match="unsupported vendor: nope"):
+        _build_asr_config({"vendor": "nope", "base_url": "http://x", "api_key": "k", "model": "m"})
+    with pytest.raises(ValueError, match="unsupported vendor: nope"):
+        _build_tts_config({"vendor": "nope", "base_url": "http://x", "api_key": "k", "model": "m"})
+    with pytest.raises(ValueError, match="supported: baidu/volcano for asr"):
+        _build_asr_config({"vendor": "mimo", "base_url": "http://x", "api_key": "k", "model": "m"})
+    with pytest.raises(ValueError, match="baidu/mimo for tts"):
+        _build_tts_config(
+            {"vendor": "volcano", "base_url": "http://x", "api_key": "k", "model": "m"}
+        )
+
+
 def test_validate_provider_config_rejects_bad_llm() -> None:
     errors = _validate_provider_config(
         {"llm": {"base_url": "ftp://bad", "api_key": "k", "model": "m"}}
