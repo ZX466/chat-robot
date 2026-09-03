@@ -57,8 +57,13 @@ namespace Controller.Live2D
             var paramList = new List<string>() { Live2DParams.AngleX, Live2DParams.AngleY, Live2DParams.EyeBallX, Live2DParams.EyeBallY };
             foreach (var paramId in paramList)
             {
-                var param = _model.Parameters.FindById(paramId) ??
-                            throw new ModelParamException($"未找到参数：{paramId}");
+                // 模型（如 Rice 缺 ParamAngleY）可能缺标准参数：warn 并跳过，不炸整个加载链
+                var param = _model.Parameters.FindById(paramId);
+                if (param == null)
+                {
+                    Debug.LogWarning($"[{nameof(LookAtController)}] 模型缺少参数，跳过：{paramId}");
+                    continue;
+                }
 
                 param.AddComponent<CubismLookParameter>();
 

@@ -47,8 +47,13 @@ namespace Controller.Live2D
             var paramList = new List<string> { Live2DParams.EyeLOpen, Live2DParams.EyeROpen };
             foreach (var paramId in paramList)
             {
-                var param = _model.Parameters.FindById(paramId) ??
-                            throw new ModelParamException($"未找到参数：{paramId}");
+                // 模型可能缺标准参数：warn 并跳过，不炸整个加载链
+                var param = _model.Parameters.FindById(paramId);
+                if (param == null)
+                {
+                    Debug.LogWarning($"[{nameof(EyeBlinkController)}] 模型缺少参数，跳过：{paramId}");
+                    continue;
+                }
                 param.AddComponent<CubismEyeBlinkParameter>();
             }
         }

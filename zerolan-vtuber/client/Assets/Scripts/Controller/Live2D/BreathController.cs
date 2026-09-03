@@ -38,14 +38,18 @@ namespace Controller.Live2D
             harmonicMotionController.BlendMode = CubismParameterBlendMode.Override;
             harmonicMotionController.ChannelTimescales = new List<float> { 1 }.ToArray();
         }
-
         private void SetCubismHarmonicMotionParameter()
         {
             var paramList = new List<string> { Live2DParams.BodyAngleY };
             foreach (var paramId in paramList)
             {
-                var param = _model.Parameters.FindById(paramId) ??
-                            throw new ModelParamException($"未找到参数：{paramId}");
+                // 模型（如 Rice）可能缺标准参数：warn 并跳过，不炸整个加载链
+                var param = _model.Parameters.FindById(paramId);
+                if (param == null)
+                {
+                    Debug.LogWarning($"[{nameof(BreathController)}] 模型缺少参数，跳过：{paramId}");
+                    continue;
+                }
                 param.AddComponent<CubismHarmonicMotionParameter>();
                 var harmonicMotionParam = param.GetComponent<CubismHarmonicMotionParameter>();
                 harmonicMotionParam.Channel = 0;

@@ -45,6 +45,12 @@ namespace Controller.Live2D
             var audioSource = FindObjectOfType<AudioSource>();
             _model.AddComponent<CubismAudioMouthInput>();
             var audioMouthInput = _model.GetComponent<CubismAudioMouthInput>();
+            if (audioSource == null)
+            {
+                // 语音播报 AudioSource 可能尚未创建：先不挂输入源，避免 NRE
+                audioMouthInput.enabled = false;
+                return;
+            }
             audioMouthInput.AudioInput = audioSource;
             audioMouthInput.SamplingQuality = CubismAudioSamplingQuality.High;
             audioMouthInput.Gain = 10f;
@@ -56,8 +62,13 @@ namespace Controller.Live2D
             var paramList = new List<string> { Live2DParams.MouthOpenY };
             foreach (var paramId in paramList)
             {
-                var param = _model.Parameters.FindById(paramId) ??
-                            throw new ModelParamException($"未找到参数：{paramId}");
+                // 模型（如 Rice 缺 ParamMouthOpenY）可能缺标准参数：warn 并跳过，不炸整个加载链
+                var param = _model.Parameters.FindById(paramId);
+                if (param == null)
+                {
+                    Debug.LogWarning($"[{nameof(MouthController)}] 模型缺少参数，跳过：{paramId}");
+                    continue;
+                }
                 param.AddComponent<CubismMouthParameter>();
             }
         }

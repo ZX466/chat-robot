@@ -55,7 +55,10 @@ public class DesktopPetManager : MonoBehaviour
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_SHOWWINDOW = 0x0040;
     private const uint LWA_COLORKEY = 0x00000001;
-    private const uint TRANSPARENT_COLOR = 0x00000000;
+    // 纯黑会被 UI 大量用作背景/文字色（设置面板 0,0,0,0.78 等），colorkey 抠黑会把它们
+    // 连带抠成透明 + 点击穿透（失焦→runInBackground:0 冻结主循环，表现为"点 UI 就闪退"）。
+    // 改抠品红 (2,0,2)：UI 不会用到，相机清屏色同步为同色即可抠掉窗口底色。
+    private const uint TRANSPARENT_COLOR = 0x000202; // COLORREF = 0x00BBGGRR → R=2,G=0,B=2
 
     #endregion
 
@@ -127,7 +130,8 @@ public class DesktopPetManager : MonoBehaviour
     private void InitCamera()
     {
         _mainCamera.clearFlags = CameraClearFlags.SolidColor;
-        _mainCamera.backgroundColor = new Color(0, 0, 0, 0);
+        // 与 TRANSPARENT_COLOR(colorkey) 同色：窗口底色被整片抠掉，UI 正常色不受影响
+        _mainCamera.backgroundColor = new Color(2f / 255f, 0f, 2f / 255f, 1f);
         _mainCamera.targetTexture = null;
     }
 
@@ -178,6 +182,9 @@ public class DesktopPetManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
+            // 输入框聚焦时 ESC 是"取消焦点"，不退应用（透明模式激活后此按键才会生效）
+            var es = EventSystem.current;
+            if (es != null && es.currentSelectedGameObject != null) return;
             Application.Quit();
         }
     }
