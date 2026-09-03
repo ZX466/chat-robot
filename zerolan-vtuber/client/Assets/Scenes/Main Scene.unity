@@ -11538,7 +11538,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "https://api.example.com/v1"
+  m_text: "Base URL: https://api.example.com/v1"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
   m_sharedMaterial: {fileID: -4116743753610370564, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
@@ -12100,7 +12100,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Enter API Key"
+  m_text: "API Key (\u4ec5\u53d1\u9001\u670d\u52a1\u7aef\u4e0d\u843d\u76d8)"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
   m_sharedMaterial: {fileID: -4116743753610370564, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
@@ -12662,7 +12662,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "model-name"
+  m_text: "Model: deepseek/deepseek-chat"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
   m_sharedMaterial: {fileID: -4116743753610370564, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
@@ -13786,7 +13786,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "https://api.example.com/v1"
+  m_text: "Base URL: https://api.example.com/v1"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
   m_sharedMaterial: {fileID: -4116743753610370564, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
@@ -14348,7 +14348,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Enter API Key"
+  m_text: "API Key (\u4ec5\u53d1\u9001\u670d\u52a1\u7aef\u4e0d\u843d\u76d8)"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
   m_sharedMaterial: {fileID: -4116743753610370564, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
@@ -14910,7 +14910,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "model-name"
+  m_text: "Model: deepseek/deepseek-chat"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
   m_sharedMaterial: {fileID: -4116743753610370564, guid: 350b96c29b57fff4a81f491658bee8a1, type: 2}
