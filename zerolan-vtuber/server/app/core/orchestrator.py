@@ -12,11 +12,23 @@ from app.config import LLMConfig
 from app.core.agent_loop import AgentLoop
 from app.core.history import History
 from app.providers.asr import create_asr_provider
-from app.providers.config import ASRSlotConfig, TTSSlotConfig
+from app.providers.config import ASRSlotConfig, BaiduTTSConfig, TTSSlotConfig
 from app.providers.tts import create_tts_provider
 from app.tools.registry import ToolRegistry
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[。！？!?；;])")
+
+
+def _tts_config_ready(config: TTSSlotConfig) -> bool:
+    """TTS 配置是否具备合成条件（key/secret 齐全）。
+
+    Baidu 需 AK/SK 双 key；Mimo 需 api_key。缺 key 时 create_tts_provider
+    仍能构造，但首次合成才会抛错——这里提前判定，让 LLM-only 模式可降级为纯文本。
+    """
+    api_key = getattr(config, "api_key", "") or ""
+    if isinstance(config, BaiduTTSConfig):
+        return bool(api_key and (getattr(config, "secret_key", "") or ""))
+    return bool(api_key)
 
 
 def split_sentences(text: str) -> list[str]:
@@ -60,6 +72,9 @@ class Orchestrator:
         """注册输出事件回调（WS 层注入，用于广播字幕/音频）。"""
         self._output_callback = callback
 
+    def _tts_ready(self) -> bool:
+        return _tts_config_ready(self._tts_config)
+
     async def _messages(self, session_id: str, user_text: str) -> list[dict[str, str]]:
         try:
             history = await self._history.recent(session_id)
@@ -99,8 +114,22 @@ class Orchestrator:
             logger.warning("agent loop returned empty answer")
             return
         await self._history.add(session_id, "assistant", answer)
+        if not self._tts_ready():
+            # LLM-only：无 TTS 时把回复文本直接下发（客户端 add_history → 左气泡），
+            # 一次性整段，不分句。
+            text_evt: dict[str, object] = {
+                "type": "assistant_text",
+                "text": answer,
+            }
+            await self._emit(session_id, text_evt)
+            yield text_evt
 
         for sentence in split_sentences(answer):
+            if not self._tts_ready():
+                # TTS 未配置（key 为空等）：跳过合成，回复以文本气泡下发（客户端
+                # 复用 add_history → 左气泡），LLM-only 模式可用。
+                logger.warning("TTS not configured, skip synthesis for: {}", sentence)
+                continue
             audio: list[bytes] = []
             async for chunk in self._tts.synthesize(sentence, voice=""):
                 audio.append(chunk)

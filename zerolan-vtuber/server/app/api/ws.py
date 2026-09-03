@@ -66,6 +66,22 @@ class WSHub:
                     "data": {"text": text},
                 }
             )
+        elif evt_type == "assistant_text":
+            # LLM-only（TTS 未配置）：回复以 add_history(role=assistant) 下发，
+            # 客户端既有 handler 渲染左气泡，零客户端改动。
+            text = str(evt.get("text", ""))
+            await self._broadcast(
+                {
+                    "message": "Assistant reply",
+                    "action": "add_history",
+                    "code": 0,
+                    "data": {
+                        "role": "assistant",
+                        "text": text,
+                        "username": "Zerolan",
+                    },
+                }
+            )
         elif evt_type == "speech":
             wave = evt.get("bytes")
             if not isinstance(wave, bytes):

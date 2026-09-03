@@ -208,3 +208,46 @@ async def test_http_microphone_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert body["code"] == 0  # D4：客户端 HttpResponseCode.Success=0
     assert body["data"]["transcript"] == "语音识别测试文本"
     assert health.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_llm_only_flow_emits_add_history_no_speech(tmp_path: Path) -> None:
+    """TTS 未配置（key 空）→ LLM-only：回复以 add_history(role=assistant) 下发，无 play_speech。"""
+    orch = await make_orchestrator(tmp_path)
+    # 模拟未配置 TTS：key 全空（create 时即如此构造也能构造成功）
+    orch._tts_config = BaiduTTSConfig(api_key="", secret_key="")  # noqa: SLF001
+    hub = WSHub(orch, make_settings(tmp_path))
+    sent: list[dict[str, Any]] = []
+
+    class FakeWS:
+        async def accept(self) -> None:
+            pass
+
+        async def receive_text(self) -> str:
+            raise AssertionError("no more messages")
+
+        async def send_text(self, data: str) -> None:
+            sent.append(json.loads(data))
+
+    fake_ws = FakeWS()
+    hub._connections["s1"] = fake_ws  # noqa: SLF001
+    await hub._on_user_text(fake_ws, "s1", "你好")  # noqa: SLF001
+    await orch.close()
+    actions = [m["action"] for m in sent]
+    assert "play_speech" not in actions  # 无 TTS：不产语音
+    assert "show_user_text_input" in actions
+    reply = next(m for m in sent if m["action"] == "add_history")
+    assert reply["data"]["role"] == "assistant"
+    assert reply["data"]["text"] == "你好，我是虚拟主播！"
+
+
+def test_tts_config_ready_matrix() -> None:
+    """_tts_config_ready：baidu 需 AK+SK；mimo 需 api_key；缺一即 False。"""
+    from app.core.orchestrator import _tts_config_ready
+    from app.providers.config import MimoTTSConfig
+
+    assert _tts_config_ready(BaiduTTSConfig(api_key="k", secret_key="s"))
+    assert not _tts_config_ready(BaiduTTSConfig(api_key="k", secret_key=""))
+    assert not _tts_config_ready(BaiduTTSConfig(api_key="", secret_key="s"))
+    assert _tts_config_ready(MimoTTSConfig(api_key="k"))
+    assert not _tts_config_ready(MimoTTSConfig(api_key=""))

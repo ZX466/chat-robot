@@ -9,3 +9,5 @@ __pycache__/
 config.yaml
 tests/fixtures/*.wav
 tests/fixtures/*.mp3
+data/
+

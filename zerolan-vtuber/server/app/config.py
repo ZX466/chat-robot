@@ -7,10 +7,12 @@ config.yaml / .env 均不入 git（server/.gitignore）。
 from pathlib import Path
 from typing import Literal
 
+import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PROJECT_DIR = Path(__file__).resolve().parents[2]
+PROJECT_DIR = Path(__file__).resolve().parents[2]  # zerolan-vtuber/
+SERVER_DIR = Path(__file__).resolve().parents[1]  # zerolan-vtuber/server/
 
 
 class LLMConfig(BaseModel):
@@ -88,10 +90,16 @@ class Settings(BaseSettings):
 
     @classmethod
     def load(cls) -> "Settings":
-        """载入 config.yaml（存在则优先），环境变量覆盖之。"""
-        config_file = PROJECT_DIR / "config.yaml"
-        if config_file.exists():
-            return cls(_env_file=(config_file, PROJECT_DIR / ".env"))  # type: ignore[call-arg]  # noqa: PGH003
+        """载入 config.yaml（server/ 优先，兼容仓库根），环境变量覆盖之。
+
+        注意：pydantic-settings 的 _env_file 只认 dotenv 格式，YAML 必须手动
+        解析后以 kwargs 注入（否则静默失效，server_hello 永远不带 live2d_model）。
+        """
+        for base in (SERVER_DIR, PROJECT_DIR):
+            config_file = base / "config.yaml"
+            if config_file.exists():
+                data = yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
+                return cls(**data)
         return cls()
 
 
