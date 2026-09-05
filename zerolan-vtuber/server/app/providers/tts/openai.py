@@ -3,7 +3,7 @@
 响应为音频字节流；当前一次性 aread 后单块产出（复用 MimoTTS 单块模式，
 仅 opus 等格式才有意义真流式，后续可按需切换 aiter_bytes）。
 错误处理：HTTP 4xx/5xx 或 200 但 Content-Type 非 audio → 解析 OpenAI 错误包
-{"error": {message, type, code}} 抛 OpenAIITSError；错误消息不回显请求 input。
+{"error": {message, type, code}} 抛 OpenAITTSError；错误消息不回显请求 input。
 """
 
 from collections.abc import AsyncIterator
@@ -15,7 +15,7 @@ from ..config import OpenAITTSConfig
 from ..http import get_shared_client
 
 
-class OpenAIITSError(RuntimeError):
+class OpenAITTSError(RuntimeError):
     """OpenAI 兼容 TTS 请求失败或响应不符合契约。"""
 
 
@@ -43,7 +43,8 @@ class OpenAITTSProvider:
             "response_format": self._config.audio_format,
         }
         response = await self._client.post(
-            self._config.base_url + self._config.api_path,
+            # rstrip('/') 防用户 base_url 尾带斜杠拼出 //v1/... 双斜杠（P3-4，部分网关 404）
+            self._config.base_url.rstrip("/") + self._config.api_path,
             headers={"Authorization": f"Bearer {self._config.api_key}"},
             json=payload,
         )
@@ -62,6 +63,8 @@ class OpenAITTSProvider:
         detail = ""
         try:
             error = response.json().get("error")
+            # 只取 error.message/type/code，不回显远端原始错误体（P3-1：自建网关
+            # 可能回显 Authorization/input，整段透传会泄漏）
             if isinstance(error, dict):
                 parts = [
                     str(error.get(key))
@@ -69,10 +72,8 @@ class OpenAITTSProvider:
                     if error.get(key) is not None
                 ]
                 detail = ", ".join(parts)
-            else:
-                detail = str(response.json())[:200]
         except ValueError:
             detail = ""
-        raise OpenAIITSError(
+        raise OpenAITTSError(
             f"OpenAI TTS failed: HTTP {response.status_code}" + (f" ({detail})" if detail else "")
         )

@@ -53,7 +53,8 @@ class OpenAIASRProvider:
             )
 
         response = await self._client.post(
-            self._config.base_url + self._config.api_path,
+            # rstrip('/') 防用户 base_url 尾带斜杠拼出 //v1/... 双斜杠（P3-4，部分网关 404）
+            self._config.base_url.rstrip("/") + self._config.api_path,
             headers={"Authorization": f"Bearer {self._config.api_key}"},
             files={"file": (f"audio.{fmt_lower}", audio)},
             data={"model": self._config.model, "response_format": self._config.response_format},
@@ -75,7 +76,8 @@ class OpenAIASRProvider:
             raise OpenAIASRError(
                 f"OpenAI ASR returned empty transcript (HTTP {response.status_code})"
             )
-        logger.info("OpenAI ASR transcript: {}", transcript)
+        # 语音内容属敏感数据：debug 级 + 截断（codex 合规反馈 P3-3）
+        logger.debug("OpenAI ASR transcript: {}", transcript[:80])
         return transcript
 
     @staticmethod

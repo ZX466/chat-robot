@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from app.providers.asr.openai import OpenAIASRError, OpenAIASRProvider
 from app.providers.config import OpenAIASRConfig, OpenAITTSConfig
-from app.providers.tts.openai import OpenAIITSError, OpenAITTSProvider
+from app.providers.tts.openai import OpenAITTSError, OpenAITTSProvider
 
 AUDIO = b"fake-audio-bytes"
 BASE = "https://api.openai.com"
@@ -153,7 +153,7 @@ async def test_synthesize_http_error_raises() -> None:
     )
     provider = _tts()
 
-    with pytest.raises(OpenAIITSError, match="rate limited"):
+    with pytest.raises(OpenAITTSError, match="rate limited"):
         async for _ in provider.synthesize("你好", "alloy"):
             pass
 
@@ -166,7 +166,7 @@ async def test_synthesize_non_audio_body_raises() -> None:
     )
     provider = _tts()
 
-    with pytest.raises(OpenAIITSError, match="model rejected the request"):
+    with pytest.raises(OpenAITTSError, match="model rejected the request"):
         async for _ in provider.synthesize("你好", "alloy"):
             pass
 
@@ -180,7 +180,7 @@ async def test_synthesize_error_does_not_echo_input() -> None:
     )
     provider = _tts()
 
-    with pytest.raises(OpenAIITSError) as excinfo:
+    with pytest.raises(OpenAITTSError) as excinfo:
         async for _ in provider.synthesize(secret_text, "alloy"):
             pass
 

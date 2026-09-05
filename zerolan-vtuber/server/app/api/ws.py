@@ -287,8 +287,10 @@ class WSHub:
                 tts_config=_build_tts_config(data.get("tts")),
             )
         except ValueError as exc:
-            # 校验放开 + 实现收窄：未知 vendor 在构建期给出明确可操作的报错
-            logger.warning("provider rebuild rejected: {}", exc)
+            # 校验放开 + 实现收窄：未知 vendor 在构建期给出明确可操作的报错。
+            # vendor 来自客户端任意字符串：截断+去控制字符防日志注入（codex P3-2）
+            safe_exc = "".join(ch for ch in str(exc) if ch.isprintable())[:120]
+            logger.warning("provider rebuild rejected: {}", safe_exc)
             await self._send(
                 ws,
                 {

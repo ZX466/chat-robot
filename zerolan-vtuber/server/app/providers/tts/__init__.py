@@ -8,14 +8,14 @@ import httpx
 from ..config import BaiduTTSConfig, MimoTTSConfig, OpenAITTSConfig, TTSSlotConfig
 from .baidu import BaiduTTSError, BaiduTTSProvider
 from .mimo import MimoTTSError, MimoTTSProvider
-from .openai import OpenAIITSError, OpenAITTSProvider
+from .openai import OpenAITTSError, OpenAITTSProvider
 
 __all__ = [
     "BaiduTTSError",
     "BaiduTTSProvider",
     "MimoTTSError",
     "MimoTTSProvider",
-    "OpenAIITSError",
+    "OpenAITTSError",
     "OpenAITTSProvider",
     "create_tts_provider",
 ]
