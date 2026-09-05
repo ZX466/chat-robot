@@ -25,6 +25,8 @@ from app.providers.config import (
     BaiduASRConfig,
     BaiduTTSConfig,
     MimoTTSConfig,
+    OpenAIASRConfig,
+    OpenAITTSConfig,
     TTSSlotConfig,
     VolcanoASRConfig,
 )
@@ -51,6 +53,12 @@ def build_orchestrator() -> Orchestrator:
             base_url=asr_cfg.base_url or "",
             model=asr_cfg.model or "bigmodel",
         )
+    elif asr_cfg.vendor == "openai":
+        asr_config = OpenAIASRConfig(
+            api_key=asr_cfg.api_key or "",
+            base_url=asr_cfg.base_url or "https://api.openai.com",
+            model=asr_cfg.model or "whisper-1",
+        )
     else:
         asr_config = BaiduASRConfig(
             api_key=asr_cfg.api_key or "",
@@ -64,6 +72,13 @@ def build_orchestrator() -> Orchestrator:
             base_url=tts_cfg.base_url or "",
             model=tts_cfg.model or "mimo-v2.5-tts",
             voice=tts_cfg.voice or "Chloe",
+        )
+    elif tts_cfg.vendor == "openai":
+        tts_config = OpenAITTSConfig(
+            api_key=tts_cfg.api_key or "",
+            base_url=tts_cfg.base_url or "https://api.openai.com",
+            model=tts_cfg.model or "tts-1",
+            voice=tts_cfg.voice or "alloy",
         )
     else:
         tts_config = BaiduTTSConfig(

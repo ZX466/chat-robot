@@ -6,7 +6,7 @@ vendor 决定协议实现；三元组（四元组）是该 vendor 实现的参�
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class BaiduASRConfig(BaseModel):
@@ -65,5 +65,44 @@ class MimoTTSConfig(BaseModel):
     tone_prompt: str = ""
 
 
-ASRSlotConfig = BaiduASRConfig | VolcanoASRConfig
-TTSSlotConfig = BaiduTTSConfig | MimoTTSConfig
+class OpenAIASRConfig(BaseModel):
+    """OpenAI 兼容 ASR（whisper 系列；覆盖 siliconflow/fish-audio/自建 whisper 等端点）。"""
+
+    vendor: Literal["openai"] = "openai"
+    base_url: str = "https://api.openai.com"
+    api_path: str = "/v1/audio/transcriptions"
+    api_key: str = ""
+    model: str = "whisper-1"
+    response_format: Literal["text", "json", "verbose_json"] = "json"
+
+    @field_validator("api_path")
+    @classmethod
+    def _validate_api_path(cls, value: str) -> str:
+        # 安全（codex 反馈）：仅放行 /v1/ 命名空间下的网关路径，禁止 ".." 穿越，
+        # 防止把 Bearer key 打到同主机非预期端点（SSRF 路径注入）。
+        if not value.startswith("/v1/") or ".." in value:
+            raise ValueError("api_path must start with '/v1/' and must not contain '..'")
+        return value
+
+
+class OpenAITTSConfig(BaseModel):
+    """OpenAI 兼容 TTS（tts-1/tts-1-hd 等 audio/speech 端点）。"""
+
+    vendor: Literal["openai"] = "openai"
+    base_url: str = "https://api.openai.com"
+    api_path: str = "/v1/audio/speech"
+    api_key: str = ""
+    model: str = "tts-1"
+    voice: str = "alloy"  # 客户端不发 voice → 服务端默认；synthesize 的 voice 非空则覆盖
+    audio_format: Literal["mp3", "opus", "aac", "flac", "wav", "pcm"] = "mp3"
+
+    @field_validator("api_path")
+    @classmethod
+    def _validate_api_path(cls, value: str) -> str:
+        if not value.startswith("/v1/") or ".." in value:
+            raise ValueError("api_path must start with '/v1/' and must not contain '..'")
+        return value
+
+
+ASRSlotConfig = BaiduASRConfig | VolcanoASRConfig | OpenAIASRConfig
+TTSSlotConfig = BaiduTTSConfig | MimoTTSConfig | OpenAITTSConfig

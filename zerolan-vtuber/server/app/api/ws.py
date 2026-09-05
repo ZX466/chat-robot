@@ -360,7 +360,7 @@ def _build_llm_config(data: Any) -> LLMConfig | None:
 
 
 def _build_asr_config(data: Any) -> Any:
-    from app.providers.config import BaiduASRConfig, VolcanoASRConfig
+    from app.providers.config import BaiduASRConfig, OpenAIASRConfig, VolcanoASRConfig
 
     data = data or {}
     if not data:
@@ -373,13 +373,16 @@ def _build_asr_config(data: Any) -> Any:
         return VolcanoASRConfig.model_validate(common)
     if vendor == "baidu":
         return BaiduASRConfig.model_validate(common)
+    if vendor == "openai":
+        return OpenAIASRConfig.model_validate(common)
     raise ValueError(
-        f"unsupported vendor: {vendor} (supported: baidu/volcano for asr, baidu/mimo for tts)"
+        f"unsupported vendor: {vendor} "
+        "(supported: baidu/volcano/openai for asr, baidu/mimo/openai for tts)"
     )
 
 
 def _build_tts_config(data: Any) -> Any:
-    from app.providers.config import BaiduTTSConfig, MimoTTSConfig
+    from app.providers.config import BaiduTTSConfig, MimoTTSConfig, OpenAITTSConfig
 
     data = data or {}
     if not data:
@@ -394,6 +397,9 @@ def _build_tts_config(data: Any) -> Any:
         return MimoTTSConfig.model_validate(common)
     if vendor == "baidu":
         return BaiduTTSConfig.model_validate(common)
+    if vendor == "openai":
+        return OpenAITTSConfig.model_validate(common)
     raise ValueError(
-        f"unsupported vendor: {vendor} (supported: baidu/volcano for asr, baidu/mimo for tts)"
+        f"unsupported vendor: {vendor} "
+        "(supported: baidu/volcano/openai for asr, baidu/mimo/openai for tts)"
     )

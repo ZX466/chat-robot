@@ -24,7 +24,7 @@ class LLMConfig(BaseModel):
 
 
 class ASRConfig(BaseModel):
-    vendor: Literal["baidu", "volcano"] = "baidu"
+    vendor: Literal["baidu", "volcano", "openai"] = "baidu"
     base_url: str | None = None
     api_key: str | None = None
     secret_key: str | None = None  # 百度 AK/SK 双 key（P1-1）
@@ -32,7 +32,7 @@ class ASRConfig(BaseModel):
 
 
 class TTSConfig(BaseModel):
-    vendor: Literal["baidu", "mimo"] = "baidu"
+    vendor: Literal["baidu", "mimo", "openai"] = "baidu"
     base_url: str | None = None
     api_key: str | None = None
     secret_key: str | None = None  # 百度 AK/SK 双 key（P1-1）

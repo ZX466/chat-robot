@@ -212,8 +212,8 @@ async def test_update_provider_config_unknown_vendor_returns_400(tmp_path: Path)
         assert resp["code"] == 400, resp
         message = resp["data"]["message"]
         assert "unsupported vendor: nope" in message
-        assert "baidu/volcano for asr" in message
-        assert "baidu/mimo for tts" in message
+        assert "baidu/volcano/openai for asr" in message
+        assert "baidu/mimo/openai for tts" in message
     finally:
         await orch.close()
 

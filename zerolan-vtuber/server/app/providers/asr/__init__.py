@@ -5,13 +5,16 @@
 
 import httpx
 
-from ..config import ASRSlotConfig, BaiduASRConfig, VolcanoASRConfig
+from ..config import ASRSlotConfig, BaiduASRConfig, OpenAIASRConfig, VolcanoASRConfig
 from .baidu import BaiduASRError, BaiduASRProvider
+from .openai import OpenAIASRError, OpenAIASRProvider
 from .volcano import VolcanoASRError, VolcanoASRProvider
 
 __all__ = [
     "BaiduASRError",
     "BaiduASRProvider",
+    "OpenAIASRError",
+    "OpenAIASRProvider",
     "VolcanoASRError",
     "VolcanoASRProvider",
     "create_asr_provider",
@@ -20,9 +23,11 @@ __all__ = [
 
 def create_asr_provider(
     config: ASRSlotConfig, *, client: httpx.AsyncClient | None = None
-) -> BaiduASRProvider | VolcanoASRProvider:
+) -> BaiduASRProvider | VolcanoASRProvider | OpenAIASRProvider:
     if isinstance(config, BaiduASRConfig):
         return BaiduASRProvider(config, client=client)
     if isinstance(config, VolcanoASRConfig):
         return VolcanoASRProvider(config, client=client)
+    if isinstance(config, OpenAIASRConfig):
+        return OpenAIASRProvider(config, client=client)
     raise ValueError(f"Unsupported ASR vendor: {type(config).__name__}")

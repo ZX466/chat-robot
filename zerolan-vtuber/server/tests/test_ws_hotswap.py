@@ -28,7 +28,8 @@ from app.config import ASRConfig, LLMConfig, ServerConfig, Settings, TTSConfig
 from app.core.agent_loop import AgentLoop
 from app.core.history import History
 from app.core.orchestrator import Orchestrator
-from app.providers.config import BaiduASRConfig, BaiduTTSConfig
+from app.providers.asr import OpenAIASRProvider
+from app.providers.config import BaiduASRConfig, BaiduTTSConfig, OpenAIASRConfig, OpenAITTSConfig
 from app.providers.llm import LLMResponse
 
 
@@ -123,12 +124,93 @@ def test_build_asr_tts_unknown_vendor_raises() -> None:
         _build_asr_config({"vendor": "nope", "base_url": "http://x", "api_key": "k", "model": "m"})
     with pytest.raises(ValueError, match="unsupported vendor: nope"):
         _build_tts_config({"vendor": "nope", "base_url": "http://x", "api_key": "k", "model": "m"})
-    with pytest.raises(ValueError, match="supported: baidu/volcano for asr"):
+    with pytest.raises(ValueError, match="supported: baidu/volcano/openai for asr"):
         _build_asr_config({"vendor": "mimo", "base_url": "http://x", "api_key": "k", "model": "m"})
-    with pytest.raises(ValueError, match="baidu/mimo for tts"):
+    with pytest.raises(ValueError, match="baidu/mimo/openai for tts"):
         _build_tts_config(
             {"vendor": "volcano", "base_url": "http://x", "api_key": "k", "model": "m"}
         )
+
+
+def test_build_openai_slots() -> None:
+    # vendor=openai：构建期走 OpenAI 兼容配置，未提供字段走默认值
+    asr = _build_asr_config(
+        {"vendor": "openai", "base_url": "http://oai", "api_key": "k", "model": "whisper-large"}
+    )
+    assert isinstance(asr, OpenAIASRConfig)
+    assert asr.model == "whisper-large"
+    assert asr.api_path == "/v1/audio/transcriptions"
+
+    tts = _build_tts_config(
+        {
+            "vendor": "openai",
+            "base_url": "http://oai",
+            "api_key": "k",
+            "model": "tts-1",
+            "voice": "nova",
+        }
+    )
+    assert isinstance(tts, OpenAITTSConfig)
+    assert tts.voice == "nova"
+    assert tts.api_path == "/v1/audio/speech"
+
+
+@pytest.mark.asyncio
+async def test_hot_swap_openai_vendor(tmp_path: Path) -> None:
+    """vendor=openai → ack 200，asr/tts 槽位重建为 OpenAI 兼容实现。"""
+    orch, _llm = await make_orchestrator(tmp_path)
+    hub = WSHub(orch, make_settings(tmp_path))
+    sent: list[dict[str, Any]] = []
+
+    class FakeWS:
+        async def accept(self) -> None:
+            pass
+
+        async def receive_text(self) -> str:
+            raise AssertionError("no more messages")
+
+        async def send_text(self, data: str) -> None:
+            sent.append(json.loads(data))
+
+    fake_ws = FakeWS()
+    hub._connections["s1"] = fake_ws  # noqa: SLF001
+    try:
+        from app.protocol.models import ZerolanProtocol
+
+        await hub._dispatch(  # noqa: SLF001
+            fake_ws,
+            "s1",
+            ZerolanProtocol(
+                action="update_provider_config",
+                message="update provider config",
+                code=0,
+                data={
+                    "asr": {
+                        "vendor": "openai",
+                        "base_url": "http://oai",
+                        "api_key": "k",
+                        "model": "whisper-1",
+                    },
+                    "tts": {
+                        "vendor": "openai",
+                        "base_url": "http://oai",
+                        "api_key": "k",
+                        "model": "tts-1",
+                    },
+                },
+            ).model_dump_json(),
+        )
+        ack = sent[-1]
+        assert ack["action"] == "update_provider_config"
+        assert ack["code"] == 200, ack
+        from app.providers.config import OpenAIASRConfig, OpenAITTSConfig
+
+        assert isinstance(orch._asr_config, OpenAIASRConfig)  # noqa: SLF001
+        assert isinstance(orch._tts_config, OpenAITTSConfig)  # noqa: SLF001
+        new_asr = orch._asr  # noqa: SLF001
+        assert isinstance(new_asr, OpenAIASRProvider)  # noqa: SLF001
+    finally:
+        await orch.close()
 
 
 def test_validate_provider_config_rejects_bad_llm() -> None:
