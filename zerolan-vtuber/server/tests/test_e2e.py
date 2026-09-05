@@ -315,3 +315,41 @@ def test_tts_config_ready_matrix() -> None:
     assert not _tts_config_ready(BaiduTTSConfig(api_key="", secret_key="s"))
     assert _tts_config_ready(MimoTTSConfig(api_key="k"))
     assert not _tts_config_ready(MimoTTSConfig(api_key=""))
+
+
+@pytest.mark.asyncio
+async def test_mp3_speech_downloadable_via_resource_file(tmp_path: Path) -> None:
+    """mp3 合成(非 WAV)落盘为 .mp3 且可经 resource/file 找到(回归 5296f91 配套缺口)。"""
+    orch = await make_orchestrator(tmp_path)
+    hub = WSHub(orch, make_settings(tmp_path))
+    sent: list[dict[str, Any]] = []
+
+    class FakeWS:
+        async def accept(self) -> None:
+            pass
+
+        async def receive_text(self) -> str:
+            raise AssertionError("no more messages")
+
+        async def send_text(self, data: str) -> None:
+            sent.append(json.loads(data))
+
+    hub._connections["s1"] = FakeWS()  # noqa: SLF001
+    # 直接模拟 orchestrator 的 speech 事件(mp3 字节)
+    await hub._on_orchestrator_output(  # noqa: SLF001
+        "s1",
+        {
+            "type": "speech",
+            "text": "测试",
+            "bytes": b"\xff\xfb" + b"\x00" * 64,
+            "audio_format": "mp3",
+        },
+    )
+    speech = next(m for m in sent if m["action"] == "play_speech")
+    file_id = speech["data"]["file_id"]
+    assert speech["data"]["audio_type"] == "mp3"
+    # 落盘为 .mp3(而非 .wav)
+    mp3_path = tmp_path / "audio" / f"{file_id}.mp3"
+    assert mp3_path.exists()
+    assert mp3_path.read_bytes()[:2] == b"\xff\xfb"
+    await orch.close()

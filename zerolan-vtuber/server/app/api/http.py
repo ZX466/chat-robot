@@ -76,7 +76,17 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
             return FileResponse(path, media_type="application/zip", filename=path.name)
         if not file_id or not file_id.replace("_", "").replace("-", "").isalnum():
             raise HTTPException(status_code=400, detail={"code": 1, "message": "Invalid file_id"})
-        path = audio_dir / f"{file_id}.wav"
-        if not path.exists():
-            raise HTTPException(status_code=404, detail={"code": 1, "message": "Not found"})
-        return FileResponse(path, media_type="audio/wav")
+        # 文件扩展名随合成格式（5296f91 起 ws 层按 TTS audio_format 落盘，默认 mp3）；
+        # 逐个探测，media_type 与实际格式对齐（客户端按字节流解码不依赖此值，但语义正确）
+        for fmt, media_type in (
+            ("mp3", "audio/mpeg"),
+            ("wav", "audio/wav"),
+            ("opus", "audio/opus"),
+            ("aac", "audio/aac"),
+            ("flac", "audio/flac"),
+            ("pcm", "application/octet-stream"),
+        ):
+            path = audio_dir / f"{file_id}.{fmt}"
+            if path.exists():
+                return FileResponse(path, media_type=media_type)
+        raise HTTPException(status_code=404, detail={"code": 1, "message": "Not found"})
