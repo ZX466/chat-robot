@@ -120,7 +120,9 @@ async def test_ws_text_flow_emits_play_speech(tmp_path: Path) -> None:
     assert "resource/file" in data["url"]  # D1：客户端经 GET /resource/file 下载
     assert data["file_id"]  # D1：file_id 即下载凭据
     assert data["transcript"]  # D1：transcript 供客户端字幕
-    assert data["audio_type"] == "wav"
+    # audio_type = 实际合成格式（FakeTTS 走 BaiduTTSConfig 默认 mp3），非 WAV 才不解 meta
+    assert data["audio_type"] == "mp3"
+    assert data["duration"] == 0.0  # 非 WAV 无头可解，0 兜底
     assert data["channels"] >= 1
     assert data["sample_rate"] >= 8000
 

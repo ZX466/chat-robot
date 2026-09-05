@@ -137,7 +137,14 @@ class Orchestrator:
             if not wave:
                 logger.warning("TTS produced empty audio for: {}", sentence)
                 continue
-            evt: dict[str, object] = {"type": "speech", "text": sentence, "bytes": wave}
+            evt: dict[str, object] = {
+                "type": "speech",
+                "text": sentence,
+                "bytes": wave,
+                # 实际合成格式（baidu 默认 mp3 / mimo wav / openai 可配），
+                # ws 层据此写扩展名与 audio_type，客户端按 audio_type 解码
+                "audio_format": getattr(self._tts_config, "audio_format", "wav"),
+            }
             await self._emit(session_id, evt)
             yield evt
 

@@ -86,9 +86,15 @@ class WSHub:
             wave = evt.get("bytes")
             if not isinstance(wave, bytes):
                 return
+            # 实际合成格式（orchestrator 从 TTS config 带出）：决定扩展名与
+            # audio_type，客户端 GetAudioClipAsync 按后者选解码器。白名单兜底，
+            # 防上游意外值落成任意扩展名。
+            audio_format = str(evt.get("audio_format", "wav"))
+            if audio_format not in ("wav", "mp3", "pcm", "opus", "aac", "flac"):
+                audio_format = "wav"
             audio_id = uuid.uuid4().hex
-            (self._audio_dir / f"{audio_id}.wav").write_bytes(wave)
-            meta = _wav_meta(wave)
+            (self._audio_dir / f"{audio_id}.{audio_format}").write_bytes(wave)
+            meta = _wav_meta(wave) if audio_format == "wav" else None
             channels, sample_rate = (meta[0], meta[1]) if meta else (1, 16000)
             duration = float(meta[2]) if meta else 0.0
             http_url = f"http://{self._settings.server.ws_host}:{self._settings.server.http_port}"
@@ -102,7 +108,7 @@ class WSHub:
                         "bot_display_name": "Zerolan",
                         "file_id": audio_id,
                         "transcript": evt.get("text", ""),
-                        "audio_type": "wav",
+                        "audio_type": audio_format,
                         "duration": duration,
                         "channels": channels,
                         "sample_rate": sample_rate,
