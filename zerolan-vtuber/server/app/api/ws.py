@@ -281,10 +281,14 @@ class WSHub:
             return
         # 热替换：llm rebuild + asr/tts 槽位重建
         try:
+            # 客户端 4 字段不含 voice：openai 槽热替换时沿用当前生效配置的 voice，
+            # 否则每次面板提交都把 config.yaml 配的音色冲回类默认（alloy 被 flux 拒收）
             await self._orchestrator.hot_swap(
                 llm_config=_build_llm_config(data.get("llm")),
                 asr_config=_build_asr_config(data.get("asr")),
-                tts_config=_build_tts_config(data.get("tts")),
+                tts_config=_build_tts_config(
+                    data.get("tts"), prev=self._orchestrator.tts_config
+                ),
             )
         except ValueError as exc:
             # 校验放开 + 实现收窄：未知 vendor 在构建期给出明确可操作的报错。
@@ -389,7 +393,7 @@ def _build_asr_config(data: Any) -> Any:
     )
 
 
-def _build_tts_config(data: Any) -> Any:
+def _build_tts_config(data: Any, prev: Any = None) -> Any:
     from app.providers.config import BaiduTTSConfig, MimoTTSConfig, OpenAITTSConfig
 
     data = data or {}
@@ -401,11 +405,15 @@ def _build_tts_config(data: Any) -> Any:
         for k, v in data.items()
         if k in ("base_url", "api_key", "model", "voice") and v is not None
     }
+    # 客户端 4 字段面板不含 voice：同 vendor 热替换时沿用上一生效配置的音色，
+    # 避免每次提交都把 config.yaml 配置的 voice 冲回类默认（如 flux 拒收 alloy）
     if vendor == "mimo":
         return MimoTTSConfig.model_validate(common)
     if vendor == "baidu":
         return BaiduTTSConfig.model_validate(common)
     if vendor == "openai":
+        if "voice" not in common and isinstance(prev, OpenAITTSConfig) and prev.voice:
+            common["voice"] = prev.voice
         return OpenAITTSConfig.model_validate(common)
     raise ValueError(
         f"unsupported vendor: {vendor} "

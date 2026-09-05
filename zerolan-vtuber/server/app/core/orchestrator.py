@@ -75,6 +75,11 @@ class Orchestrator:
     def _tts_ready(self) -> bool:
         return _tts_config_ready(self._tts_config)
 
+    @property
+    def tts_config(self) -> TTSSlotConfig:
+        """当前生效的 TTS 槽位配置（WS 层热替换时继承 voice 等未下发字段用）。"""
+        return self._tts_config
+
     async def _messages(self, session_id: str, user_text: str) -> list[dict[str, str]]:
         try:
             history = await self._history.recent(session_id)

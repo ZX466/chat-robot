@@ -155,6 +155,51 @@ def test_build_openai_slots() -> None:
     assert tts.api_path == "/v1/audio/speech"
 
 
+def test_build_tts_voice_inherited_from_prev() -> None:
+    """面板 4 字段不含 voice：openai 槽热替换未发 voice 时沿用 prev 配置的音色。"""
+    prev = OpenAITTSConfig(api_key="k", voice="flux-alexis-en")
+    tts = _build_tts_config(
+        {
+            "vendor": "openai",
+            "base_url": "http://oai",
+            "api_key": "k2",
+            "model": "deepgram/flux-tts:free",
+        },
+        prev=prev,
+    )
+    assert isinstance(tts, OpenAITTSConfig)
+    assert tts.voice == "flux-alexis-en"  # 继承,不冲回默认 alloy
+
+    # 客户端显式发 voice → 覆盖 prev
+    tts2 = _build_tts_config(
+        {
+            "vendor": "openai",
+            "base_url": "http://oai",
+            "api_key": "k",
+            "model": "m",
+            "voice": "nova",
+        },
+        prev=prev,
+    )
+    assert isinstance(tts2, OpenAITTSConfig)
+    assert tts2.voice == "nova"
+
+    # 无 prev（首次启动前不存在）→ 类默认
+    tts3 = _build_tts_config(
+        {"vendor": "openai", "base_url": "http://oai", "api_key": "k", "model": "m"}
+    )
+    assert isinstance(tts3, OpenAITTSConfig)
+    assert tts3.voice == "alloy"
+
+    # 跨 vendor 换槽（openai→baidu）不继承 openai 的 voice
+    from app.providers.config import BaiduTTSConfig
+
+    tts4 = _build_tts_config(
+        {"vendor": "baidu", "base_url": "http://b", "api_key": "k", "model": "m"}, prev=prev
+    )
+    assert isinstance(tts4, BaiduTTSConfig)
+
+
 @pytest.mark.asyncio
 async def test_hot_swap_openai_vendor(tmp_path: Path) -> None:
     """vendor=openai → ack 200，asr/tts 槽位重建为 OpenAI 兼容实现。"""
