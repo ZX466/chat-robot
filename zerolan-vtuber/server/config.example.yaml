@@ -10,17 +10,31 @@ llm:
   temperature: 0.8
 
 asr:
-  vendor: baidu                # baidu | volcano
+  vendor: baidu                # baidu | volcano | openai（也可填其他自定义串，未知 vendor 提交时回 400 并列出支持清单）
   base_url: null
   api_key: null
-  model: null
+  secret_key: null             # 仅 baidu 需要（AK/SK 双 key）
+  model: null                  # openai: whisper-1；volcano: bigmodel
+  # openai 兼容端点示例（siliconflow/fish-audio/自建 whisper 等）：
+  # vendor: openai
+  # base_url: https://api.siliconflow.cn
+  # api_path: /v1/audio/transcriptions   # 必须以 /v1/ 开头
+  # model: FunAudioLLM/SenseVoiceSmall
 
 tts:
-  vendor: baidu                # baidu | mimo
+  vendor: baidu                # baidu | mimo | openai（同上，未知 vendor 提交时回 400）
   base_url: null
   api_key: null
-  model: null
-  voice: null
+  secret_key: null             # 仅 baidu 需要（AK/SK 双 key）
+  model: null                  # openai: tts-1；mimo: mimo-v2.5-tts
+  voice: null                  # openai 默认 alloy；mimo 默认 Chloe
+  # openai 兼容端点示例：
+  # vendor: openai
+  # base_url: https://api.openai.com
+  # api_path: /v1/audio/speech          # 必须以 /v1/ 开头
+  # model: tts-1
+  # voice: alloy
+  # audio_format: mp3                   # mp3 | opus | aac | flac | wav | pcm
 
 tools:
   web_search:

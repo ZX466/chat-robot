@@ -44,8 +44,8 @@ llm:
 | 配置块 | 必填场景 | 关键字段 |
 |---|---|---|
 | `llm` | **必填** | `api_key`、`model`(如 `deepseek/deepseek-chat`、`openai/gpt-4o-mini`、`gemini/gemini-2.0-flash`);OpenAI 兼容端点用 `openai/<model>` + `base_url` |
-| `asr` | 要语音输入才填 | `vendor: baidu` 时填 `api_key` + `secret_key`(百度 AK/SK);`vendor: volcano` 填火山 key |
-| `tts` | 要语音播报才填 | `vendor: baidu` 时填 `api_key` + `secret_key`;`vendor: mimo` 填 MiMo key |
+| `asr` | 要语音输入才填 | `vendor: baidu` 填 `api_key` + `secret_key`(百度 AK/SK);`vendor: volcano` 填火山 key;`vendor: openai` 填任意 OpenAI 兼容端点(base_url/api_key/model,如 whisper-1、siliconflow、自建 whisper) |
+| `tts` | 要语音播报才填 | `vendor: baidu` 填 `api_key` + `secret_key`;`vendor: mimo` 填 MiMo key;`vendor: openai` 填任意 OpenAI 兼容端点(model 如 tts-1,voice 默认 alloy) |
 | `tools.web_search` | 要联网搜索才填 | `provider: tavily` 时 key 走 `.env` 的 `TAVILY_API_KEY` |
 | `server` | 通常不改 | `ws_port: 8090` / `http_port: 8091`,仅用于向客户端回显地址,与启动端口保持一致 |
 | `broadcast` / `history` | 可选 | 定时口播 / SQLite 路径(默认 `data/history.db`) |
