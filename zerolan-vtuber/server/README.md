@@ -43,12 +43,42 @@ llm:
 
 | 配置块 | 必填场景 | 关键字段 |
 |---|---|---|
-| `llm` | **必填** | `api_key`、`model`(如 `deepseek/deepseek-chat`、`openai/gpt-4o-mini`、`gemini/gemini-2.0-flash`);OpenAI 兼容端点用 `openai/<model>` + `base_url` |
-| `asr` | 要语音输入才填 | `vendor: baidu` 填 `api_key` + `secret_key`(百度 AK/SK);`vendor: volcano` 填火山 key;`vendor: openai` 填任意 OpenAI 兼容端点(base_url/api_key/model,如 whisper-1、siliconflow、自建 whisper) |
-| `tts` | 要语音播报才填 | `vendor: baidu` 填 `api_key` + `secret_key`;`vendor: mimo` 填 MiMo key;`vendor: openai` 填任意 OpenAI 兼容端点(model 如 tts-1,voice 默认 alloy) |
+| `llm` | **必填** | `api_key`、`model`(如 `deepseek/deepseek-chat`、`openai/gpt-4o-mini`);**OpenRouter** 用 litellm 原生前缀 `openrouter/<org>/<model>:free`(无需 base_url) |
+| `asr` | 要语音输入才填 | `vendor: baidu` 填 `api_key` + `secret_key`(百度 AK/SK);`vendor: volcano` 填火山 key;`vendor: openai` 填任意 OpenAI 兼容 `/v1/audio/transcriptions` 端点(base_url/api_key/model) |
+| `tts` | 要语音播报才填 | `vendor: baidu` 填 `api_key` + `secret_key`;`vendor: mimo` 填 MiMo key;`vendor: openai` 填任意 OpenAI 兼容 `/v1/audio/speech` 端点(base_url/api_key/model/voice);**voice 只在 config.yaml 配**(面板 4 字段不含它,热替换自动沿用当前音色) |
 | `tools.web_search` | 要联网搜索才填 | `provider: tavily` 时 key 走 `.env` 的 `TAVILY_API_KEY` |
 | `server` | 通常不改 | `ws_port: 8090` / `http_port: 8091`,仅用于向客户端回显地址,与启动端口保持一致 |
 | `broadcast` / `history` | 可选 | 定时口播 / SQLite 路径(默认 `data/history.db`) |
+
+## 实测配方(2026-09-05):ASR=siliconflow · LLM/TTS=OpenRouter 免费
+
+```yaml
+llm:
+  api_key: null          # ← .env 里 OPENROUTER_API_KEY / LLM__API_KEY(sk-or-v1-…)
+  model: openrouter/deepseek/deepseek-chat-v3-0324:free
+asr:
+  vendor: openai
+  base_url: https://api.siliconflow.cn
+  api_key: null          # ← siliconflow key(sk-…)
+  model: FunAudioLLM/SenseVoiceSmall   # 免费中文转写;备选 TeleAI/TeleSpeechASR
+tts:
+  vendor: openai
+  base_url: https://openrouter.ai/api   # 注意:拼 /v1/audio/speech,别只填 openrouter.ai
+  api_key: null          # ← OpenRouter key(与 llm 同一把)
+  model: deepgram/flux-tts:free
+  voice: flux-alexis-en  # flux 系 36 音色全英文(flux-bree/hannah/marcus/…);中文自然语音换 siliconflow fish-speech
+```
+
+对应 `.env`(在 `zerolan-vtuber/` 下即 PROJECT_DIR,不在 server/ 下;字段名 `槽位__字段`):
+
+```
+LLM__API_KEY=sk-or-v1-…
+ASR__API_KEY=sk-…
+TTS__API_KEY=sk-or-v1-…   # 与 LLM 同一把 OpenRouter key
+```
+
+> 客户端设置面板可随时热替换 vendor/base_url/api_key/model(项目特色,详见
+> "客户端怎么连");voice 是唯一不在面板上的字段——改音色编辑 config.yaml 后重启。
 
 > 没填 ASR/TTS 也能启动;客户端连上后可在"模型服务"界面运行中热填
 > (WS `update_provider_config`,仅内存生效,api_key 掩码回显,详见下文)。
@@ -107,10 +137,10 @@ zip 要求:根目录(或一级子目录)含 `*.model3.json` + `.moc3` + 贴图;�
 ## 测试与质量
 
 ```bash
-uv run pytest                                    # 全量测试(mock 不联网,当前 76 用例)
-uv run pytest --cov=app --cov-fail-under=80      # 覆盖率门禁 ≥80%(当前 86%)
+uv run pytest                                    # 全量测试(mock 不联网,当前 108 用例)
+uv run pytest --cov=app --cov-fail-under=80      # 覆盖率门禁 ≥80%
 uv run ruff check .                              # lint
-uv run mypy app                                  # 类型检查(strict)
+uv run mypy app                                  # 类型检查(strict,32 files)
 ```
 
 ## 安全注意
@@ -128,7 +158,7 @@ server/
 │   ├── api/               # WS 端点(/ws)与 HTTP 路由
 │   ├── protocol/          # Zerolan 协议数据模型(与 Route.cs 对齐)
 │   ├── core/              # orchestrator / agent_loop / history / broadcast
-│   ├── providers/         # asr(baidu|volcano) / tts(baidu|mimo) / llm / auth
+│   ├── providers/         # asr(baidu|volcano|openai) / tts(baidu|mimo|openai) / llm / auth
 │   └── tools/             # ToolRegistry + web_search + sixty_api
 ├── models/                # Live2D 模型 zip(live2d_model 下发;Rice 为官方示例)
 ├── tests/                 # pytest + respx 契约测试
