@@ -226,6 +226,44 @@ zip 要求:根目录(或一级子目录)含 `*.model3.json` + `.moc3` + 贴图;�
 | GET | `/resource/file?file_id={id}` | 下载 `play_speech` 下发的音频;`file_id=model:<名字>` 下载 Live2D 模型 zip |
 | GET | `/resource/file?file_id=model:{name}` | Live2D 模型包(`models/{name}.zip`) |
 
+## 60s API 工具组(tools/sixty_api.py)
+
+实时资讯数据源(`https://60s.viki.moe`,支持自托管),封装为 7 个 LLM 工具,LLM 自主决定调用。
+
+**分层**:`LLM(tool calling) → AgentLoop(≤3 轮/单工具 10s 超时/结果截断 2000 字符) → ToolRegistry(JSON Schema 分发) → SixtyApiClient(httpx 异步 + TTL 缓存) → 60s API`
+
+**7 个工具**:
+
+| 工具 | 端点 | 返回加工 |
+|---|---|---|
+| `get_daily_news` | `/v2/60s?encoding=markdown` | 纯文本特例(非 JSON),单独走 `resp.text` |
+| `get_hot_list(platform)` | `/v2/{bili,weibo,zhihu,douyin,toutiao,rednote}` | 平台白名单校验;list 取前 20 条编号成行 |
+| `get_weather(city)` | `/v2/weather?city=中文` | dict 转 `k: v` 逐行 |
+| `get_epic_free` | `/v2/epic` | list 逐行;空返回提示 |
+| `get_exchange_rate` | `/v2/exchange-rate` | dict 逐行 |
+| `get_hitokoto` | `/v2/hitokoto` | 取 `hitokoto` 字段 |
+| `get_moyu` | `/v2/moyu` | list 逐行 |
+
+**TTL 内存缓存**(过期即删,`time.monotonic()` 计时;同一问题 TTL 内重复问零网络请求):
+
+| TTL | 工具 |
+|---|---|
+| 600s(热榜类) | hot_list / epic / exchange_rate / hitokoto |
+| 1800s(资讯类) | daily_news / moyu |
+| 600s(天气) | weather |
+
+缓存 key 按端点+参数隔离(`hot_weibo`、`weather_北京` 独立)。
+
+**机制要点**:
+- 统一响应包 `{code:200, message, data}`;`code!=200` 抛 `SixtyApiError`,HTTP 层失败 `raise_for_status()`,异常由 AgentLoop 10s 超时兜底,对话不卡死。
+- 所有结果加工成纯文本行,作为 `role=tool` 消息注入 LLM 上下文(省 token 且易读)。
+- 工具参数用 pydantic 模型,`model_json_schema()` 自动生成 JSON Schema 传 litellm;参数描述写在 schema 里,LLM 据此填参。
+- 模块级单例懒初始化,import 零 IO 副作用。
+- `platform` 白名单防任意路径拼接。
+- base_url 可配(config.yaml `tools.sixty_api.base_url`),默认官方地址,改自托管地址即可。
+
+**调用全流程**(以"今天有什么新闻?"为例):LLM 决定调 `get_daily_news()` → AgentLoop `asyncio.wait_for(timeout=10)` → 缓存未命中则请求 → markdown 新闻截断 2000 字符注入 → LLM 按人设改写成口播稿播报。全程结构化日志记录轮次与 tool_calls。
+
 ## 测试与质量
 
 ```bash
