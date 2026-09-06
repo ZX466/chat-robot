@@ -6,12 +6,16 @@ HTTP status 与 body.code 解耦，http status 保留 200/4xx/5xx）。
 """
 
 import json
+import re
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from app.config import Settings
 from app.core.orchestrator import Orchestrator
+
+# codex P2-5:session_id 白名单——字母数字下划线连字符,8-64 位
+_SESSION_ID_RE = re.compile(r"[A-Za-z0-9_-]{8,64}")
 
 
 def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settings) -> None:
@@ -42,7 +46,11 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
 
         # 会话透传（口子）：客户端可携 SessionId/session_id 复用同一语音上下文；
         # 缺省仍为 "voice"（单会话语义，客户端配合由 opencode 负责）。
-        session_id = str(meta.get("SessionId") or meta.get("session_id") or "").strip() or "voice"
+        # 校验（codex P2-5）：session_id 直进 history 键与日志——限 字母数字下划线连字符，
+        # 防日志注入（换行伪造日志行）、超大键内存放大、ws 会话槽位覆写。
+        session_id = str(meta.get("SessionId") or meta.get("session_id") or "").strip()
+        if not _SESSION_ID_RE.fullmatch(session_id):
+            session_id = "voice"
 
         fmt = (audio.filename or "wav").rsplit(".", 1)[-1].lower()
         try:

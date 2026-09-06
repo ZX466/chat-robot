@@ -6,6 +6,7 @@
 - ping → pong 心跳协作
 """
 
+import re
 import uuid
 from typing import Any
 
@@ -15,6 +16,9 @@ from loguru import logger
 from app.config import LLMConfig, Settings
 from app.core.orchestrator import Orchestrator
 from app.protocol.models import ZerolanProtocol
+
+# codex P2-5:session_id 白名单(与 http.py 同规则)——字母数字下划线连字符,8-64 位
+_SESSION_ID_RE = re.compile(r"[A-Za-z0-9_-]{8,64}")
 
 
 def mask_key(key: str | None) -> str:
@@ -165,7 +169,11 @@ class WSHub:
 
     @staticmethod
     def _maybe_resume_session(raw: str) -> str | None:
-        """G1：解析首条消息；client_hello 携 session_id 时返回之，否则 None。"""
+        """G1：解析首条消息；client_hello 携 session_id 时返回之，否则 None。
+
+        校验（codex P2-5）：session_id 直进 history 键、日志与 _connections 槽位——
+        仅放行 字母数字下划线连字符（8-64 位），防日志注入与槽位覆写。
+        """
         try:
             msg = ZerolanProtocol.model_validate_json(raw)
         except Exception:  # noqa: BLE001 — 非法消息由 _dispatch 报错
@@ -173,7 +181,9 @@ class WSHub:
         if msg.action != "client_hello" or not isinstance(msg.data, dict):
             return None
         sid = msg.data.get("session_id")
-        return sid if isinstance(sid, str) and sid else None
+        if not isinstance(sid, str) or not _SESSION_ID_RE.fullmatch(sid):
+            return None
+        return sid
 
     async def _dispatch(self, ws: WebSocket, session_id: str, raw: str) -> None:
         try:

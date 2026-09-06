@@ -436,3 +436,34 @@ async def test_mp3_speech_downloadable_via_resource_file(tmp_path: Path) -> None
     assert mp3_path.exists()
     assert mp3_path.read_bytes()[:2] == b"\xff\xfb"
     await orch.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "bad_sid",
+    ["evil\nINJECTED", "x" * 200, "短", "with space 12", ""],
+)
+async def test_http_microphone_session_id_sanitized(tmp_path: Path, bad_sid: str) -> None:
+    """非法 SessionId(注入串/超长/非白名单字符)→ 回落 'voice',不落库不进日志(P2-5)。"""
+    orch = await make_orchestrator(tmp_path)
+    app.state.orchestrator = orch
+    app.state.history = orch._history  # noqa: SLF001
+    WSHub(orch, make_settings(tmp_path))
+
+    from httpx import ASGITransport, AsyncClient
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post(
+            "/playground/microphone",
+            files={"audio": ("voice.wav", b"\x00\x01" * 100, "audio/wav")},
+            data={
+                "metadata": json.dumps(
+                    {"Channels": 1, "SampleRate": 16000, "SessionId": bad_sid}
+                )
+            },
+        )
+        voice_records = await orch._history.recent("voice")  # noqa: SLF001 — close 前读取
+        await orch.close()
+    assert resp.status_code == 200, resp.text
+    # 落库会话是回落后的 "voice"(bad_sid 不存在历史)
+    assert len(voice_records) == 2
