@@ -83,6 +83,98 @@ TTS__API_KEY=sk-or-v1-…   # 与 LLM 同一把 OpenRouter key
 > 没填 ASR/TTS 也能启动;客户端连上后可在"模型服务"界面运行中热填
 > (WS `update_provider_config`,仅内存生效,api_key 掩码回显,详见下文)。
 
+## 配置模型详细步骤(含常见填法与报错对照)
+
+### 第 0 步:理解 model 前缀(最重要的一个坑)
+
+`model` 字段**不是裸模型名**,开头的前缀告诉 litellm 用哪家的协议:
+
+| 供应商形态 | model 怎么填 | base_url | 实例 |
+|---|---|---|---|
+| OpenAI 兼容自定义端点(微信/豆包 Ark/siliconflow/中转站/自建 vLLM…) | **`openai/<模型名>`**(前缀必须加) | 填到 `/v1` 截断(**不含** `/chat/completions` 等路径) | `openai/Deepseek-v4-flash` + `https://chatapi.weixin.qq.com/openai/v1` |
+| OpenRouter | `openrouter/<org>/<model>`(免费模型带 `:free`) | 不填 | `openrouter/deepseek/deepseek-chat-v3-0324:free` |
+| DeepSeek 官方 | `deepseek/deepseek-chat` | 不填 | |
+| OpenAI 官方 | `openai/gpt-4o-mini` | 不填(走官方默认) | |
+
+> 裸模型名(如 `Deepseek-v4-flash`)会报
+> `litellm.BadRequestError: LLM Provider NOT provided` —— 补前缀即解决。
+
+### 第 1 步:server 侧启动配置(config.yaml)
+
+编辑 `server/config.yaml`(此文件不入 git),按下方模板填;key 也可以放 `.env`:
+
+```yaml
+llm:
+  base_url: null                      # OpenRouter 不填;自定义端点填到 /v1
+  api_key: null                       # 或 .env 里 LLM__API_KEY
+  model: openrouter/deepseek/deepseek-chat-v3-0324:free
+asr:                                  # 语音识别(不要填 TTS 模型!)
+  vendor: openai
+  base_url: https://api.siliconflow.cn
+  api_key: null                       # 或 .env 里 ASR__API_KEY
+  model: FunAudioLLM/SenseVoiceSmall
+tts:                                  # 语音合成(不要填 ASR 模型!)
+  vendor: openai
+  base_url: https://openrouter.ai/api
+  api_key: null                       # 或 .env 里 TTS__API_KEY
+  model: deepgram/flux-tts:free
+  voice: flux-alexis-en               # 唯一不在面板上的字段,见第 3 步
+```
+
+`.env` 写法(文件放 **`zerolan-vtuber/`** 下,即 PROJECT_DIR,不在 server/ 下;
+字段名 = `槽位大写__字段大写`):
+
+```
+LLM__API_KEY=sk-or-v1-你的OpenRouter钥匙
+ASR__API_KEY=sk-你的siliconflow钥匙
+TTS__API_KEY=sk-or-v1-与LLM同把OpenRouter钥匙
+```
+
+启动:`uv run uvicorn app.main:app --host 127.0.0.1 --port 8091`
+
+### 第 2 步:客户端面板热替换(不重启换供应商,项目特色)
+
+exe 连上 server 后,设置面板每槽填 4 个字段 → 点"应用配置"→ **即时生效**:
+
+| 槽位 | 4 字段 | 填法示例(换成某 OpenAI 兼容端点) |
+|---|---|---|
+| LLM | Base URL / API Key / Model | `https://chatapi.weixin.qq.com/openai/v1` / 微信key / `openai/Deepseek-v4-flash` |
+| ASR | Vendor / Base URL / API Key / Model | `openai` / `https://api.siliconflow.cn` / siliconflowkey / `FunAudioLLM/SenseVoiceSmall` |
+| TTS | Vendor / Base URL / API Key / Model | `openai` / `https://openrouter.ai/api` / OpenRouterkey / `deepgram/flux-tts:free` |
+
+规则:
+- **vendor 填 `openai`** 即走 OpenAI 兼容实现(覆盖市面上绝大多数 ASR/TTS/LLM 端点);
+  填 `baidu`/`volcano`/`mimo` 走对应专用实现;其他值回 400 并列支持的清单。
+- **key 只发服务端内存**,不落盘、日志掩码;重启后回到 config.yaml 的配置。
+- **base_url 截到 `/v1`**,别带 `/chat/completions`、`/audio/speech` 等尾部路径
+  (各功能路径由服务端按功能自动拼接)。
+- 热替换**沿用当前音色**(voice):换供应商/模型不会把音色冲掉。
+
+### 第 3 步:改音色(voice)
+
+voice 只在 `config.yaml` 的 `tts.voice` 配置(面板没有此字段),改完重启 server 生效:
+
+```yaml
+tts:
+  voice: flux-alexis-en    # deepgram flux 系:36 个全英文音色
+                           # (flux-bree/hannah/marcus/miles/…,报错信息里列全)
+```
+
+> flux 系是英文音色,念中文会带口音;要自然的中文语音,把 TTS 槽整个换到
+> siliconflow 的 fish-speech:`base_url: https://api.siliconflow.cn`、
+> `model: fishaudio/fish-speech-1.5`、`voice: <fish 音色名>`,key 用 siliconflow 那把。
+
+### 常见报错速查
+
+| 报错(关键词) | 原因 | 解决 |
+|---|---|---|
+| `LLM Provider NOT provided` | model 缺前缀 | 加 `openai/` 或对应前缀(见第 0 步表) |
+| `Model xxx does not exist, 400` | ASR/TTS 槽填错模型(如把 TTS 填进 ASR);或模型名少 `:free` 后缀 | 按槽位功能选模型;OpenRouter 免费模型名必须带 `:free` |
+| `Unknown voice "alloy"` | TTS 音色不被该供应商支持 | config.yaml 改 `tts.voice` 为该供应商支持的音色 |
+| `asr.vendor must be…` / `unsupported vendor` | vendor 拼错或为空 | 填 `openai`(通用)或 baidu/volcano/mimo |
+| 麦克风说话后无反应,server 日志 404 | 老版本 `/resource/file` 硬编码 .wav | 升级到 b59598d+ |
+| 面板提交后音色失效 | 老版本热替换把 voice 冲回默认 | 升级到 29cc863+ |
+
 ## 客户端怎么连
 
 1. 启动 Unity 打包的 exe(见 `../client/README.md` 打包步骤)
