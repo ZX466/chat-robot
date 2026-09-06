@@ -15,7 +15,7 @@ namespace Controller
         {
             if (contentTMP != null)
             {
-                contentTMP.text = content;
+                contentTMP.text = EscapeRichText(content);
             }
         }
 
@@ -23,8 +23,13 @@ namespace Controller
         {
             if (usernameTMP != null)
             {
-                usernameTMP.text = username;
+                usernameTMP.text = EscapeRichText(username);
             }
+        }
+
+        private static string EscapeRichText([NotNull] string text)
+        {
+            return text.Replace("&", "&amp;").Replace("<", "&lt;");
         }
     }
 }
