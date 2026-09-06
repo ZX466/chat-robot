@@ -187,18 +187,26 @@ tts:
 服务端可向客户端下发 Live2D 人物模型——**换模型只需替换服务端文件,不用重新打包 exe**:
 
 ```bash
-# ① 放模型:zip 内含 <名字>.model3.json(官方示例 Rice 已内置)
-zerolan-vtuber/models/rice.zip
+# ① 放模型:zip 内含 <名字>.model3.json + .moc3 + 贴图(递归扫描定位,层级不限)
+#    现有两个模型可直接用:
+zerolan-vtuber/models/rice.zip   # Live2D Cubism 官方免费示例(示例许可)
+zerolan-vtuber/models/UG.zip     # UG(by 泡芙妙妙屋;9 表情 + 待机动作;自用无碍,公开分发需确认授权)
 
 # ② 改配置:config.yaml
 server:
-  live2d_model: rice        # 模型名 = zip 文件名(不含 .zip);留空/删行 = 不下发
+  live2d_model: UG          # 模型名 = zip 文件名(不含 .zip);留空/删行 = 不下发
 
-# ③ 重启 server → 客户端连上后自动下载并加载模型
+# ③ 重启 server → 客户端连上后自动下载并加载(Toast"Live2D加载完毕"进入桌宠模式)
 ```
 
-zip 要求:根目录(或一级子目录)含 `*.model3.json` + `.moc3` + 贴图;动作放 `motions/`。
-内置 `models/Rice/` 为 Live2D Cubism 官方免费示例(示例许可),可直接改名替换。
+**换模型步骤(三行)**:新 zip 放 `models/` → `live2d_model:` 改成 zip 文件名 → 重启 server。
+客户端连过旧模型时会自动销毁重建,无需清缓存;同名 zip 更新后需删除客户端
+`persistentDataPath/<file_id>` 缓存目录(如 `model_UG`)才会重新解压。
+
+**zip 要求与来源**:
+- 必含:唯一一个 `*.model3.json` + `.moc3` + 贴图;动作放 `motions/`(待机动作排在第一个被播放)。
+- 从 VTube Studio / Live2D 官方示例拿到的模型 zip 直接可用(多余文件如 `.vtube.json`/`.prefab` 会被忽略)。
+- 下载链路:server_hello 携带模型名 → 客户端 GET `/resource/file?file_id=model:<名字>` → 解压加载。
 
 ## 协议摘要
 
