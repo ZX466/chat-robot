@@ -2,6 +2,10 @@
 .*/
 # 例外：团结云开发（DevSecOps）工作流目录需入库
 !/.workflows/
+# 例外：GitHub Actions CI 配置需入库
+!/zerolan-vtuber/.github/
+!/zerolan-vtuber/.github/**
+
 
 # Python
 __pycache__/
