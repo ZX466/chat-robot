@@ -275,6 +275,89 @@ async def test_http_microphone_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.asyncio
+async def test_http_microphone_emits_history_bubbles(tmp_path: Path) -> None:
+    """语音路径：转写文本与播报文本都进聊天栏（add_history user/assistant 双侧）。
+
+    D5 只禁文字输入路径的 user add_history（客户端已本地回显）；语音输入
+    客户端无本地回显，必须由 server 广播（SpeechHandler.OnAddHistory 渲染）。
+    """
+    orch = await make_orchestrator(tmp_path)
+    app.state.orchestrator = orch
+    app.state.history = orch._history  # noqa: SLF001
+    hub = WSHub(orch, make_settings(tmp_path))
+    sent: list[dict[str, Any]] = []
+
+    class FakeWS:
+        async def accept(self) -> None:
+            pass
+
+        async def receive_text(self) -> str:
+            raise AssertionError("no more messages")
+
+        async def send_text(self, data: str) -> None:
+            sent.append(json.loads(data))
+
+    fake_ws = FakeWS()
+    hub._connections["s1"] = fake_ws  # noqa: SLF001
+    from httpx import ASGITransport, AsyncClient
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post(
+            "/playground/microphone",
+            files={"audio": ("voice.wav", b"\x00\x01" * 100, "audio/wav")},
+            data={"metadata": json.dumps({"Channels": 1, "SampleRate": 16000})},
+        )
+        records = await orch._history.recent("voice")  # noqa: SLF001 — close 前读取
+        await orch.close()  # P1-3：显式关闭，防 aiosqlite worker 线程挂起
+    assert resp.status_code == 200, resp.text
+
+    actions = [m["action"] for m in sent]
+    assert actions.count("add_history") == 2  # user + assistant 各一条
+    user_msg = next(
+        m for m in sent if m["action"] == "add_history" and m["data"]["role"] == "user"
+    )
+    assert user_msg["data"]["username"] == "User"
+    assert user_msg["data"]["text"] == "语音识别测试文本"
+    assistant_msg = next(
+        m for m in sent if m["action"] == "add_history" and m["data"]["role"] == "assistant"
+    )
+    assert assistant_msg["data"]["username"] == "Zerolan"
+    assert assistant_msg["data"]["text"] == "你好，我是虚拟主播！"
+    assert "play_speech" in actions
+    assert "show_user_text_input" in actions  # 字幕照常
+    # 会话上下文：默认 session "voice" 下 user/assistant 均已落历史
+    assert [r["role"] for r in records] == ["user", "assistant"]
+
+
+@pytest.mark.asyncio
+async def test_http_microphone_session_passthrough(tmp_path: Path) -> None:
+    """metadata 携 SessionId → 会话按传入值落历史（多客户端/多会话口子）。"""
+    orch = await make_orchestrator(tmp_path)
+    app.state.orchestrator = orch
+    app.state.history = orch._history  # noqa: SLF001
+    WSHub(orch, make_settings(tmp_path))  # 注册输出回调
+
+    from httpx import ASGITransport, AsyncClient
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post(
+            "/playground/microphone",
+            files={"audio": ("voice.wav", b"\x00\x01" * 100, "audio/wav")},
+            data={
+                "metadata": json.dumps(
+                    {"Channels": 1, "SampleRate": 16000, "SessionId": "custom-voice"}
+                )
+            },
+        )
+        records = await orch._history.recent("custom-voice")  # noqa: SLF001 — close 前读取
+        await orch.close()
+    assert resp.status_code == 200, resp.text
+
+    assert [r["role"] for r in records] == ["user", "assistant"]
+    assert records[0]["content"] == "语音识别测试文本"
+
+
+@pytest.mark.asyncio
 async def test_llm_only_flow_emits_add_history_no_speech(tmp_path: Path) -> None:
     """TTS 未配置（key 空）→ LLM-only：回复以 add_history(role=assistant) 下发，无 play_speech。"""
     orch = await make_orchestrator(tmp_path)

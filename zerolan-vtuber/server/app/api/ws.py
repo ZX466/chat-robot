@@ -56,8 +56,9 @@ class WSHub:
         evt_type = evt.get("type")
         if evt_type == "user_text":
             text = str(evt.get("text", ""))
-            # D5：只发 show_user_text_input，不再广播 add_history(role=user)
-            # （客户端左右气泡会重复刷新）
+            # D5：文字输入只发 show_user_text_input，不广播 add_history(role=user)
+            # （客户端左右气泡会重复刷新）；语音输入客户端无本地回显，
+            # 必须由 server 发 add_history(role=user) 进聊天栏。
             await self._broadcast(
                 {
                     "message": "User text",
@@ -66,6 +67,15 @@ class WSHub:
                     "data": {"text": text},
                 }
             )
+            if evt.get("source") == "voice":
+                await self._broadcast(
+                    {
+                        "message": "User history",
+                        "action": "add_history",
+                        "code": 0,
+                        "data": {"role": "user", "text": text, "username": "User"},
+                    }
+                )
         elif evt_type == "assistant_text":
             # LLM-only（TTS 未配置）：回复以 add_history(role=assistant) 下发，
             # 客户端既有 handler 渲染左气泡，零客户端改动。
@@ -116,6 +126,21 @@ class WSHub:
                     },
                 }
             )
+            if evt.get("source") == "voice":
+                # 语音路径：播报文本同步进聊天栏（客户端 SpeechHandler.OnAddHistory
+                # 渲染左气泡）；文字路径 D5 不发（客户端无本地回显的字幕已有）。
+                await self._broadcast(
+                    {
+                        "message": "Assistant history",
+                        "action": "add_history",
+                        "code": 0,
+                        "data": {
+                            "role": "assistant",
+                            "text": str(evt.get("text", "")),
+                            "username": "Zerolan",
+                        },
+                    }
+                )
 
     async def handle(self, ws: WebSocket) -> None:
         await ws.accept()

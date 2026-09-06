@@ -100,13 +100,18 @@ class Orchestrator:
         logger.info("asr transcribing {} bytes ({}Hz {}ch)", len(audio), sample_rate, channels)
         return await self._asr.transcribe(audio, fmt, sample_rate=sample_rate, channels=channels)
 
-    async def process_text(self, session_id: str, text: str) -> AsyncIterator[dict[str, object]]:
+    async def process_text(
+        self, session_id: str, text: str, *, source: str = "text"
+    ) -> AsyncIterator[dict[str, object]]:
         """文本入口：LLM(带工具) → 逐句 TTS 产出。
 
         每个产出事件同时触发 output_callback（WS 广播），再 yield 给调用方。
+        source 标记入口（"text"=WS 文字输入 / "voice"=麦克风转写）：D5 裁定
+        文字输入客户端已本地回显不广播 add_history，语音输入无本地回显必须由
+        server 发（ws 层按 source 区分）。
         """
         await self._history.add(session_id, "user", text)
-        user_evt: dict[str, object] = {"type": "user_text", "text": text}
+        user_evt: dict[str, object] = {"type": "user_text", "text": text, "source": source}
         await self._emit(session_id, user_evt)
         yield user_evt
 
@@ -146,6 +151,7 @@ class Orchestrator:
                 "type": "speech",
                 "text": sentence,
                 "bytes": wave,
+                "source": source,
                 # 实际合成格式（baidu 默认 mp3 / mimo wav / openai 可配），
                 # ws 层据此写扩展名与 audio_type，客户端按 audio_type 解码
                 "audio_format": getattr(self._tts_config, "audio_format", "wav"),

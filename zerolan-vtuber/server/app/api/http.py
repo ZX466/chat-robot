@@ -40,6 +40,10 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
         if not wave:
             raise HTTPException(status_code=400, detail={"code": 1, "message": "Empty audio"})
 
+        # 会话透传（口子）：客户端可携 SessionId/session_id 复用同一语音上下文；
+        # 缺省仍为 "voice"（单会话语义，客户端配合由 opencode 负责）。
+        session_id = str(meta.get("SessionId") or meta.get("session_id") or "").strip() or "voice"
+
         fmt = (audio.filename or "wav").rsplit(".", 1)[-1].lower()
         try:
             text = await orch.transcribe_audio(wave, fmt, sample_rate, channels)
@@ -49,7 +53,7 @@ def setup_http_routes(app: FastAPI, orchestrator: Orchestrator, settings: Settin
             ) from exc
         # 语音识别文本走编排链路（字幕/音频经 orchestrator output_callback 广播到 WS）
         try:
-            async for _evt in orch.process_text("voice", text):
+            async for _evt in orch.process_text(session_id, text, source="voice"):
                 pass
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(
