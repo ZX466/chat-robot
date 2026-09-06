@@ -43,3 +43,4 @@ MemoryCaptures/
 *.vcxproj
 *.vcxproj.filters
 .vs/
+models/
