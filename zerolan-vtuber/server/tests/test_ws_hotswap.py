@@ -200,6 +200,23 @@ def test_build_tts_voice_inherited_from_prev() -> None:
     assert isinstance(tts4, BaiduTTSConfig)
 
 
+def test_build_tts_voice_whitespace_falls_back_to_inherit() -> None:
+    """客户端面板第 5 字段（voice）填了空白 → 视为未填，走 prev 继承而非空串。"""
+    prev = OpenAITTSConfig(api_key="k", voice="flux-bree-en")
+    tts = _build_tts_config(
+        {
+            "vendor": "openai",
+            "base_url": "http://oai",
+            "api_key": "k2",
+            "model": "deepgram/flux-tts:free",
+            "voice": "   ",
+        },
+        prev=prev,
+    )
+    assert isinstance(tts, OpenAITTSConfig)
+    assert tts.voice == "flux-bree-en"
+
+
 @pytest.mark.asyncio
 async def test_hot_swap_openai_vendor(tmp_path: Path) -> None:
     """vendor=openai → ack 200，asr/tts 槽位重建为 OpenAI 兼容实现。"""

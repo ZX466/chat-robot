@@ -440,6 +440,10 @@ def _build_tts_config(data: Any, prev: Any = None) -> Any:
         for k, v in data.items()
         if k in ("base_url", "api_key", "model", "voice") and v is not None
     }
+    # 面板第 5 字段 voice 填空白等同未填（客户端不发 None 只发 ""），strip 后走继承
+    voice_val = common.get("voice")
+    if isinstance(voice_val, str) and not voice_val.strip():
+        common.pop("voice")
     # 客户端 4 字段面板不含 voice：同 vendor 热替换时沿用上一生效配置的音色，
     # 避免每次提交都把 config.yaml 配置的 voice 冲回类默认（如 flux 拒收 alloy）
     if vendor == "mimo":

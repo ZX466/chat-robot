@@ -33,6 +33,7 @@ namespace Controller.UI
         [SerializeField] private TMP_InputField ttsBaseUrlInputField;
         [SerializeField] private TMP_InputField ttsApiKeyInputField;
         [SerializeField] private TMP_InputField ttsModelInputField;
+        [SerializeField] private TMP_InputField ttsVoiceInputField;
         [SerializeField] private Button applyProviderConfigButton;
         [SerializeField] private Button quitButton;
 
@@ -163,7 +164,7 @@ namespace Controller.UI
             AddNonEmptySlot(payload, "asr", asrBaseUrlInputField, asrApiKeyInputField, asrModelInputField,
                 asrVendorInputField);
             AddNonEmptySlot(payload, "tts", ttsBaseUrlInputField, ttsApiKeyInputField, ttsModelInputField,
-                ttsVendorInputField);
+                ttsVendorInputField, ttsVoiceInputField);
 
             if (payload.Count == 0)
             {
@@ -191,7 +192,7 @@ namespace Controller.UI
 
         private static void AddNonEmptySlot(Dictionary<string, object> payload, string slot,
             TMP_InputField baseUrlField, TMP_InputField apiKeyField, TMP_InputField modelField,
-            TMP_InputField vendorField)
+            TMP_InputField vendorField, TMP_InputField voiceField = null)
         {
             if (baseUrlField == null || apiKeyField == null || modelField == null)
             {
@@ -200,6 +201,12 @@ namespace Controller.UI
 
             var slotData = BuildProviderSlot(baseUrlField.text, apiKeyField.text, modelField.text,
                 vendorField != null ? vendorField.text : null);
+            // 音色（§12 扩展）：仅 TTS 有第 5 字段；留空不发送 → 服务端沿用 config.yaml 的音色
+            if (voiceField != null && !string.IsNullOrWhiteSpace(voiceField.text))
+            {
+                slotData["voice"] = voiceField.text.Trim();
+            }
+
             var baseUrl = (string)slotData["base_url"];
             var apiKey = (string)slotData["api_key"];
             var model = (string)slotData["model"];
