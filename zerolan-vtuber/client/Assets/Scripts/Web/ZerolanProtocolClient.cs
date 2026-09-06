@@ -4,6 +4,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Data;
 using JetBrains.Annotations;
+using Service;
 using UI;
 using UnityEngine;
 using UnityWebSocket;
@@ -65,8 +66,12 @@ namespace Web
 
         private void SendClientHello()
         {
+            var helloData = new Dictionary<string, object>
+            {
+                ["session_id"] = AppConfigService.Instance.SessionId
+            };
             _webSocket.SendAsync(new ZerolanProtocol<Object>(_protocol, _version, "Client hello!",
-                Route.ClientHello, 0, null));
+                Route.ClientHello, 0, helloData));
             _helloSent = true;
         }
 

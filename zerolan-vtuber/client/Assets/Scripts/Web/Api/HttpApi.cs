@@ -49,6 +49,7 @@ namespace Web.Api
     {
         public int Channels { get; set; }
         public int SampleRate { get; set; }
+        public string SessionId { get; set; }
     }
 
     public sealed class HttpApi
@@ -127,7 +128,8 @@ namespace Web.Api
             var jsonString = JsonConverter.Serialize(new AudioMetadata
             {
                 Channels = channels,
-                SampleRate = sampleRate
+                SampleRate = sampleRate,
+                SessionId = Service.AppConfigService.Instance.SessionId
             });
 
             var multipartFormSections = new List<IMultipartFormSection>();

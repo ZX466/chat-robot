@@ -1,4 +1,5 @@
 ﻿using Cysharp.Threading.Tasks;
+using Controller;
 using Data;
 using TMPro;
 using UnityEngine;
@@ -28,6 +29,9 @@ namespace Controller
 
         // 音量指示器
         [SerializeField] private Image volumeIndicator;
+
+        // 字幕控制器
+        [SerializeField] private SubtitleController subtitleController;
 
         private int _sampleRate = 16000;
         private const int VolumeSampleLength = 128;
@@ -115,6 +119,11 @@ namespace Controller
                 if (volumeIndicator != null)
                 {
                     volumeIndicator.fillAmount = 0f;
+                }
+
+                if (subtitleController != null)
+                {
+                    subtitleController.SetSubtitle("识别中…", 0);
                 }
 
                 if (_microphoneRecording != null)

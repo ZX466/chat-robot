@@ -14,6 +14,8 @@ namespace Service
         public AppConfig Config => _appConfig;
         public static AppConfigService Instance { get; } = new();
 
+        public string SessionId { get; } = Guid.NewGuid().ToString("D");
+
         private AppConfigService()
         {
             _appConfig = new AppConfig(
