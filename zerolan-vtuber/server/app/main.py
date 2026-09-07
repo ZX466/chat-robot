@@ -5,22 +5,30 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+# .env → os.environ：pydantic-settings 的 env_file 只注入 Settings 字段，不会
+# export 到进程环境；而 ddgs 读的是 os.environ["DDGS_PROXY"]（搜索引擎代理，
+# 国内网络直连不可达时必填），litellm 供应商 key 兜底同理。必须在任何 provider
+# 导入前加载（下方 E402 豁免即为此）。python-dotenv 由 litellm 传递依赖提供。
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
 # 部署健壮性：litellm 导入时默认尝试联网拉模型价目表（无网环境会静默挂起）。
 # 强制本地价目表回退；如需联网更新可显式设 LITELLM_LOCAL_MODEL_COST_MAP=False。
 os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 os.environ.setdefault("LITELLM_LOG", "ERROR")
 
-from fastapi import FastAPI, WebSocket
-from loguru import logger
+from fastapi import FastAPI, WebSocket  # noqa: E402 — 需在 .env 加载后导入
+from loguru import logger  # noqa: E402
 
-from app.api.http import setup_http_routes
-from app.api.ws import WSHub
-from app.config import settings
-from app.core.agent_loop import AgentLoop
-from app.core.broadcast import BroadcastScheduler
-from app.core.history import History
-from app.core.orchestrator import Orchestrator
-from app.providers.config import (
+from app.api.http import setup_http_routes  # noqa: E402
+from app.api.ws import WSHub  # noqa: E402
+from app.config import settings  # noqa: E402
+from app.core.agent_loop import AgentLoop  # noqa: E402
+from app.core.broadcast import BroadcastScheduler  # noqa: E402
+from app.core.history import History  # noqa: E402
+from app.core.orchestrator import Orchestrator  # noqa: E402
+from app.providers.config import (  # noqa: E402 — 需在 .env 加载后导入
     ASRSlotConfig,
     BaiduASRConfig,
     BaiduTTSConfig,
@@ -30,10 +38,10 @@ from app.providers.config import (
     TTSSlotConfig,
     VolcanoASRConfig,
 )
-from app.providers.llm import LLMProvider
-from app.tools.registry import ToolRegistry
-from app.tools.sixty_api import register_sixty_api
-from app.tools.web_search import register_web_search
+from app.providers.llm import LLMProvider  # noqa: E402
+from app.tools.registry import ToolRegistry  # noqa: E402
+from app.tools.sixty_api import register_sixty_api  # noqa: E402
+from app.tools.web_search import register_web_search  # noqa: E402
 
 SYSTEM_PROMPT = (
     "你是虚拟主播，用自然亲切的中文口语化回答用户。"

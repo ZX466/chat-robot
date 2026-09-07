@@ -121,3 +121,41 @@ async def test_agent_loop_tool_then_answer() -> None:
     # 工具结果已注入历史
     tool_msgs = [m for m in provider.calls[-1] if m.get("role") == "tool"]
     assert tool_msgs and tool_msgs[0]["content"] == "abab"
+
+
+@pytest.mark.asyncio
+async def test_agent_loop_tool_timeout_returns_error_text() -> None:
+    """工具执行超时(如 ddgs 直连不可达)必须转错误文本注入,不得让 TimeoutError 穿透成 500。"""
+    import asyncio
+
+    async def slow_handler(text: str) -> str:
+        await asyncio.sleep(5)  # 远超 TOOL_TIMEOUT(10s 太慢,monkeypatch 用 0.05)
+        return text
+
+    registry = ToolRegistry()
+    registry.register(
+        Tool(
+            name="slow",
+            description="Slow tool",
+            parameters=EchoArgs.model_json_schema(),
+            handler=slow_handler,
+        )
+    )
+    tool_call = ToolCall(id="t4", name="slow", arguments='{"text":"x"}')
+    provider = FakeProvider(
+        [LLMResponse(content="", tool_calls=[tool_call]), LLMResponse(content="done")]
+    )
+    loop = AgentLoop(provider, registry)  # type: ignore[arg-type]
+    import app.core.agent_loop as al
+
+    original = al.TOOL_TIMEOUT
+    al.TOOL_TIMEOUT = 0.05
+    try:
+        result = await loop.run([{"role": "user", "content": "hi"}])
+    finally:
+        al.TOOL_TIMEOUT = original
+    # 超时转文本,对话继续而不是抛异常
+    assert result.content == "done"
+    assert result.rounds == 2
+    tool_msgs = [m for m in provider.calls[-1] if m.get("role") == "tool"]
+    assert tool_msgs and "timed out" in tool_msgs[0]["content"]

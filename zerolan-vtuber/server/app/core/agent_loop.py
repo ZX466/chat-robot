@@ -101,7 +101,13 @@ class AgentLoop:
                 arguments = {}
         except json.JSONDecodeError:
             arguments = {}
-        output = await asyncio.wait_for(
-            self._registry.invoke(tc.name, arguments), timeout=TOOL_TIMEOUT
-        )
+        try:
+            output = await asyncio.wait_for(
+                self._registry.invoke(tc.name, arguments), timeout=TOOL_TIMEOUT
+            )
+        except TimeoutError:
+            # 超时与工具内部异常同权转文本(registry.invoke 只兜内部异常),
+            # 否则 TimeoutError 穿透到 HTTP 层变成 500(2026-09-06 线上 ddgs 超时事故)。
+            logger.warning("tool {} timed out after {}s", tc.name, TOOL_TIMEOUT)
+            output = f"Tool {tc.name} timed out after {TOOL_TIMEOUT}s."
         return {"role": "tool", "tool_call_id": tc.id, "content": _truncate(output)}
