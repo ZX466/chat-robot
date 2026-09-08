@@ -164,6 +164,15 @@ class WSHub:
                 await self._dispatch(ws, session_id, raw)
         except WebSocketDisconnect:
             logger.info("ws disconnected: session={}", session_id)
+        except RuntimeError as exc:
+            # 处理期间客户端断开 → _broadcast send 失败(被吞)但 uvicorn 侧
+            # application_state 已翻 DISCONNECTED → 循环回边 receive_text 抛
+            # RuntimeError('WebSocket is not connected')。与断开同权处理,
+            # 不得穿透成 ASGI 500(2026-09-08 线上事故)。
+            if "not connected" in str(exc):
+                logger.info("ws disconnected mid-processing: session={}", session_id)
+            else:
+                raise
         finally:
             self._connections.pop(session_id, None)
 

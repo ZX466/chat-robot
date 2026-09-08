@@ -467,3 +467,88 @@ async def test_http_microphone_session_id_sanitized(tmp_path: Path, bad_sid: str
     assert resp.status_code == 200, resp.text
     # 落库会话是回落后的 "voice"(bad_sid 不存在历史)
     assert len(voice_records) == 2
+
+
+@pytest.mark.asyncio
+async def test_ws_handle_survives_disconnect_during_processing(tmp_path: Path) -> None:
+    """处理期间客户端断开 → 广播 send 失败(被吞) → 循环回边 receive_text
+    不得让 RuntimeError('WebSocket is not connected') 穿透成 ASGI 500。
+
+    线上事故(2026-09-08):agent_loop 3.6s 期间客户端 TCP abort,orchestrator
+    产出广播失败被 _broadcast 吞掉,handle 回到 receive_text 时 starlette
+    application_state 已 DISCONNECTED → RuntimeError 不被 except
+    WebSocketDisconnect 捕获 → ASGI 崩溃栈。
+    """
+    orch = await make_orchestrator(tmp_path)
+    hub = WSHub(orch, make_settings(tmp_path))
+
+    from starlette.websockets import WebSocketDisconnect
+
+    class DeadAfterSendWS:
+        """模拟线上时序:server_hello 发出后客户端断开;提问 dispatch 照常;
+        处理产出的广播 send 失败并翻转 application_state(uvicorn 真实行为,
+        实机单元实验证实);循环回边 receive_text 抛 RuntimeError ——
+        未修复的 handle 跑此 Fake 必崩(手动 trace 验证)。"""
+
+        def __init__(self) -> None:
+            self.application_state = "CONNECTED"
+            self.client_state = "CONNECTED"
+            self.disconnected = False
+            self.sends = 0
+            self.receive_calls = 0
+
+        async def accept(self) -> None:
+            pass
+
+        def _on_send_fail(self) -> None:
+            # starlette/uvicorn: send 发现 client_state=DISCONNECTED → 触发 close
+            # → application_state 转 DISCONNECTED(实验证实)
+            self.application_state = "DISCONNECTED"
+
+        async def receive_text(self) -> str:
+            self.receive_calls += 1
+            if self.receive_calls == 1:
+                return json.dumps(
+                    {
+                        "protocol": "ZerolanProtocol",
+                        "version": "1.1",
+                        "message": "hi",
+                        "action": "client_hello",
+                        "code": 0,
+                        "data": {"session_id": "dead-session-001"},
+                    }
+                )
+            if self.receive_calls == 2:
+                # 第二条:提问。处理期间"客户端断开"已发生。
+                return json.dumps(
+                    {
+                        "protocol": "ZerolanProtocol",
+                        "version": "1.1",
+                        "message": "t",
+                        "action": "show_user_text_input",
+                        "code": 0,
+                        "data": {"text": "你好"},
+                    }
+                )
+            # 循环回边(第 3 次):未修复时线上在此抛 RuntimeError
+            if self.application_state != "CONNECTED":
+                raise RuntimeError('WebSocket is not connected. Need to call "accept" first.')
+            raise WebSocketDisconnect()
+
+        async def send_text(self, data: str) -> None:
+            payload = json.loads(data)
+            if payload.get("action") == "server_hello" and not self.disconnected:
+                # server_hello 出去后客户端 TCP abort(处理开始前,dispatch send 均成功)
+                self.disconnected = True
+                self.client_state = "DISCONNECTED"
+                return
+            # 之后所有 send(含 orchestrator 广播)= 线上 uvicorn 对死连接的行为
+            self.sends += 1
+            self._on_send_fail()  # 广播 send 失败并翻转 application_state
+            raise WebSocketDisconnect()
+
+    dead = DeadAfterSendWS()
+    await hub.handle(dead)  # type: ignore[arg-type] — 不得抛 RuntimeError
+    await orch.close()
+    # 走完处理+广播失败+循环回边,handle 优雅退出(连接清理)
+    assert dead.sends > 0  # 确实发生了广播失败路径
